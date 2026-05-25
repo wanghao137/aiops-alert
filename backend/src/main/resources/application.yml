@@ -1,0 +1,92 @@
+server:
+  port: 8090
+  servlet:
+    context-path: /api
+
+spring:
+  application:
+    name: aiops-alert
+  profiles:
+    active: dev
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+    default-property-inclusion: non_null
+  mail:
+    host: smtp.example.com
+    port: 465
+    username: ""
+    password: ""
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.ssl.enable: true
+
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  global-config:
+    banner: false
+    db-config:
+      id-type: auto
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
+
+aiops:
+  llm:
+    enabled: true
+    base-url: https://api.openai.com/v1
+    api-key: ""
+    default-model: gpt-4o-mini
+    timeout-seconds: 60
+  engine:
+    enabled: true
+    interval-seconds: 30
+  simulator:
+    enabled: true
+    interval-seconds: 15
+  incident:
+    merge-window-minutes: 30
+
+logging:
+  level:
+    root: INFO
+    com.aiops: DEBUG
+
+---
+# ===========================================================
+# dev：H2 文件模式，零依赖即可启动
+# 启动方式：java -jar (默认 active=dev)
+# ===========================================================
+spring:
+  config:
+    activate:
+      on-profile: dev
+  datasource:
+    url: jdbc:h2:file:./data/aiops_alert;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false;CASE_INSENSITIVE_IDENTIFIERS=true
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema-h2.sql
+      continue-on-error: true
+  h2:
+    console:
+      enabled: true
+      path: /h2
+
+---
+# ===========================================================
+# prod：MySQL，需要预创建数据库 + 导入 docs/schema.sql
+# 启动方式：java -jar -Dspring.profiles.active=prod
+# ===========================================================
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    url: jdbc:mysql://localhost:3306/aiops_alert?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&characterEncoding=utf8
+    username: root
+    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver

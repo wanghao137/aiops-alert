@@ -1,0 +1,49 @@
+# ====== IDE ======
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+
+# ====== OS ======
+.DS_Store
+Thumbs.db
+*.swp
+
+# ====== Logs ======
+*.log
+logs/
+*.log.*
+
+# ====== Environment ======
+.env
+.env.local
+.env.*.local
+
+# ====== Backend (Maven / Java) ======
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+backend/data/
+backend/*.db
+backend/*.mv.db
+backend/*.trace.db
+backend/*.lock.db
+backend/dependency-reduced-pom.xml
+backend/HELP.md
+
+# ====== Frontend (Node / Vite) ======
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/.npm-cache/
+frontend/.cache/
+frontend/coverage/
+frontend/*.local
+frontend/.eslintcache
+
+# Vue auto-generated
+frontend/auto-imports.d.ts
+frontend/components.d.ts
