@@ -47,3 +47,6 @@ frontend/.eslintcache
 # Vue auto-generated
 frontend/auto-imports.d.ts
 frontend/components.d.ts
+
+# Helper script (one-shot, 不入库)
+push-to-github.cmd
