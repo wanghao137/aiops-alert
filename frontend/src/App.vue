@@ -31,7 +31,7 @@ const cmdStore = useCommandPaletteStore()
 const sseConnected = ref(false)
 
 const { connected } = useSse((event, data) => {
-  if (event === 'connected') {
+  if (event === 'connected' || event === 'ping') {
     sseConnected.value = true
     return
   }
@@ -72,7 +72,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .app-shell {
   display: grid;
-  grid-template-columns: 240px 1fr;
+  grid-template-columns: 224px 1fr;
   min-height: 100vh;
   background: var(--bg-base);
 }
@@ -85,7 +85,6 @@ onBeforeUnmount(() => {
 
 .app-content {
   flex: 1;
-  padding: 20px 24px 32px;
   overflow: auto;
 }
 

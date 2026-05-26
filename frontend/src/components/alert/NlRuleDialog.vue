@@ -58,6 +58,14 @@
     </div>
 
     <div v-else class="result-area">
+      <!-- 思考过程（推理类模型独有） -->
+      <ThinkingPanel
+        v-if="result.reasoning"
+        :content="result.reasoning"
+        :duration-ms="result.durationMs"
+        title="AI 思考过程"
+      />
+
       <!-- 概要 -->
       <div class="result-card">
         <div class="result-meta">
@@ -167,6 +175,7 @@ import { listAlertChannels, type AlertChannelItem } from '@/api/alertChannel'
 import { getObjectTypeMeta } from '@/utils/objectType'
 import { getAlertLevelMeta } from '@/utils/alertLevel'
 import { useCatalogStore } from '@/stores/catalog'
+import ThinkingPanel from '@/components/ai/ThinkingPanel.vue'
 
 const props = defineProps<{ modelValue: boolean }>()
 const emit = defineEmits<{

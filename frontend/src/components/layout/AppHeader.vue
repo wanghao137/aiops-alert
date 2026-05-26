@@ -1,22 +1,27 @@
 <template>
   <header class="app-header">
-    <div class="page-title">
-      <h1>{{ title }}</h1>
-      <span class="page-sub">{{ subtitle }}</span>
+    <div class="page-block">
+      <div class="eyebrow-line">
+        <span class="eyebrow">{{ eyebrow }}</span>
+        <span class="trail" />
+      </div>
+      <h1 class="page-title">{{ title }}</h1>
     </div>
 
-    <div class="header-actions">
+    <div class="actions">
       <button class="search-pill" @click="openCommand">
-        <Search :size="14" />
-        <span>问点什么 · 例如：现在哪些对象在告警？</span>
-        <span class="kbd">⌘ K</span>
+        <Search :size="13" :stroke-width="1.6" />
+        <span>问点什么 — 现在哪些对象在告警？</span>
+        <kbd>⌘ K</kbd>
       </button>
+
+      <ThemeSwitcher />
 
       <el-dropdown trigger="click" @command="onDemoCmd">
         <button class="demo-btn">
-          <Sparkles :size="14" />
+          <Sparkles :size="13" :stroke-width="1.6" />
           演示数据
-          <ChevronDown :size="14" />
+          <ChevronDown :size="12" :stroke-width="1.6" />
         </button>
         <template #dropdown>
           <el-dropdown-menu>
@@ -30,38 +35,49 @@
         </template>
       </el-dropdown>
 
-      <div class="status-dot" :title="sseConnected ? 'SSE 已连接' : 'SSE 未连接'">
-        <span class="dot" :class="{ ok: sseConnected }" />
-        <span>{{ sseConnected ? '实时' : '离线' }}</span>
+      <div class="conn">
+        <span class="conn-dot" :class="{ live: sseConnected }" />
+        <span class="conn-text">{{ sseConnected ? 'LIVE' : 'OFFLINE' }}</span>
+        <span class="conn-time">{{ now }}</span>
       </div>
     </div>
   </header>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import {
-  Search,
-  Sparkles,
-  ChevronDown,
-  PlayCircle,
-  Trash2
-} from 'lucide-vue-next'
+import { Search, Sparkles, ChevronDown, PlayCircle, Trash2 } from 'lucide-vue-next'
 import { cleanDemoData, seedDemoData } from '@/api/demo'
 import { useCommandPaletteStore } from '@/composables/useCommandPalette'
+import ThemeSwitcher from './ThemeSwitcher.vue'
 
 defineProps<{ sseConnected?: boolean }>()
 
 const route = useRoute()
-const title = computed(() => (route.meta?.title as string) || '总览')
-const subtitle = computed(() => '实时监控告警 · AI 增强')
 const cmdStore = useCommandPaletteStore()
 
-function openCommand() {
-  cmdStore.open()
+const eyebrow = computed(() => (route.meta?.eyebrow as string) || (route.meta?.title as string) || 'OVERVIEW')
+const title = computed(() => (route.meta?.title as string) || '总览')
+
+const now = ref(formatNow())
+let timer: number | undefined
+function formatNow() {
+  const d = new Date()
+  const hh = d.getHours().toString().padStart(2, '0')
+  const mm = d.getMinutes().toString().padStart(2, '0')
+  const ss = d.getSeconds().toString().padStart(2, '0')
+  return `${hh}:${mm}:${ss}`
 }
+onMounted(() => {
+  timer = window.setInterval(() => { now.value = formatNow() }, 1000)
+})
+onBeforeUnmount(() => {
+  if (timer) clearInterval(timer)
+})
+
+function openCommand() { cmdStore.open() }
 
 async function onDemoCmd(cmd: string) {
   if (cmd === 'seed') {
@@ -71,13 +87,11 @@ async function onDemoCmd(cmd: string) {
   } else if (cmd === 'clean') {
     try {
       await ElMessageBox.confirm(
-        '将删除所有对象、规则、渠道、事件、Incident。常用于演示前清场，确认继续？',
+        '将删除所有对象、规则、渠道、事件、Incident。确认继续？',
         '清空业务数据',
         { confirmButtonText: '清空', cancelButtonText: '取消', type: 'warning' }
       )
-    } catch {
-      return
-    }
+    } catch { return }
     const r = await cleanDemoData()
     ElMessage.success(r || '已清空')
     setTimeout(() => window.location.reload(), 600)
@@ -91,33 +105,49 @@ async function onDemoCmd(cmd: string) {
   top: 0;
   z-index: 10;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: 16px;
-  padding: 14px 24px;
-  background: rgba(11, 17, 32, 0.85);
-  backdrop-filter: blur(8px);
-  border-bottom: 1px solid var(--line);
+  gap: 18px;
+  padding: 22px 28px 18px;
+  background: linear-gradient(to bottom, rgba(7, 8, 12, 0.95), rgba(7, 8, 12, 0.85) 70%, transparent);
+  backdrop-filter: blur(12px);
 }
 
-.page-title h1 {
+.eyebrow-line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.trail {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--line-strong), transparent);
+  max-width: 80px;
+}
+
+.page-title {
   margin: 0;
-  font-size: 18px;
-  font-weight: 600;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
   color: var(--text-primary);
 }
 
-.page-sub {
-  display: block;
-  margin-top: 2px;
-  color: var(--text-muted);
-  font-size: 12px;
-}
-
-.header-actions {
+.actions {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
 }
 
 .search-pill {
@@ -125,74 +155,83 @@ async function onDemoCmd(cmd: string) {
   align-items: center;
   gap: 10px;
   width: 380px;
-  padding: 8px 12px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--bg-panel);
+  padding: 9px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--bg-elev-1);
   color: var(--text-muted);
   cursor: pointer;
+  font-family: var(--font-sans);
   font-size: 12px;
-  transition: all 0.2s;
+  transition: all 0.15s ease;
 }
 
 .search-pill:hover {
-  border-color: var(--accent);
+  border-color: var(--accent-line);
   color: var(--text-secondary);
 }
 
-.search-pill .kbd {
+.search-pill kbd {
   margin-left: auto;
   padding: 2px 7px;
-  border: 1px solid var(--line-subtle);
-  border-radius: 5px;
-  background: var(--bg-subtle);
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  background: var(--bg-elev-2);
   color: var(--text-secondary);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-family: var(--font-mono);
+  font-size: 10px;
 }
 
 .demo-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 7px 12px;
-  border: 1px solid var(--line);
+  gap: 7px;
+  padding: 8px 14px;
+  border: 1px solid var(--line-strong);
   border-radius: 999px;
-  background: var(--bg-panel);
+  background: var(--bg-elev-1);
   color: var(--text-secondary);
+  font-family: var(--font-sans);
   font-size: 12px;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .demo-btn:hover {
-  border-color: var(--accent);
+  border-color: var(--accent-line);
   color: var(--accent);
 }
 
-.status-dot {
-  display: flex;
+.conn {
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  padding: 0 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
   color: var(--text-muted);
-  font-size: 12px;
 }
 
-.dot {
-  width: 8px;
-  height: 8px;
+.conn-dot {
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  background: #94a3b8;
+  background: var(--text-faint);
 }
 
-.dot.ok {
-  background: #10B981;
-  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.18);
-  animation: pulse 2s infinite;
+.conn-dot.live {
+  background: var(--ok);
+  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.18);
+  animation: pulse-soft 2.4s ease-in-out infinite;
 }
 
-@keyframes pulse {
-  0%, 100% { box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.18); }
-  50%      { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0.05); }
+.conn-text {
+  color: var(--text-secondary);
+}
+
+.conn-time {
+  color: var(--text-muted);
+  margin-left: 4px;
 }
 </style>

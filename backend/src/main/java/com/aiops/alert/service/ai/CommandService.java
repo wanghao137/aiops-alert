@@ -104,6 +104,7 @@ public class CommandService {
                 .answer(StrUtil.blankToDefault(summary, "已为你处理"))
                 .routePath(StrUtil.blankToDefault(routePath, null))
                 .rawOutput(result.getContent())
+                .reasoning(result.getReasoning())
                 .modelName(result.getLog().getModelName())
                 .durationMs((int) (System.currentTimeMillis() - start));
 

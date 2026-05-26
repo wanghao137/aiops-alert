@@ -7,6 +7,7 @@ export interface NlRuleDraftResponse {
   warnings?: string[]
   durationMs?: number
   modelName?: string
+  reasoning?: string
 }
 
 export function checkNlRuleAvailability() {

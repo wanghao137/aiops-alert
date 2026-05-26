@@ -37,6 +37,7 @@ export function setDefaultLlmConfig(id: number) {
 export interface LlmTestResult {
   success: boolean
   reply?: string
+  reasoning?: string
   error?: string
   durationMs?: number
   modelName?: string

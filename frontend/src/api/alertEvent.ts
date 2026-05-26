@@ -57,6 +57,7 @@ export interface AlertEventItem {
   eventReason?: string
   aiSummary?: string
   aiSummaryStatus?: string
+  aiReasoning?: string
   firstTriggeredAt?: string
   lastTriggeredAt?: string
   confirmedAt?: string

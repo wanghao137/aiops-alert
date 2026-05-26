@@ -205,6 +205,43 @@
         <el-button type="primary" :loading="submitting" @click="onSubmit">保存</el-button>
       </template>
     </el-dialog>
+
+    <!-- 测试连通结果 -->
+    <el-dialog
+      v-model="testDialogVisible"
+      title="LLM 测试连通结果"
+      width="640px"
+    >
+      <div v-if="testResult" class="test-result">
+        <div class="test-summary" :class="testResult.success ? 'ok' : 'fail'">
+          <component :is="testResult.success ? CheckIcon : AlertIcon" :size="16" />
+          <strong>{{ testResult.success ? '连通成功' : '连通失败' }}</strong>
+          <span v-if="testResult.modelName">· {{ testResult.modelName }}</span>
+          <span v-if="testResult.durationMs">· {{ testResult.durationMs }}ms</span>
+        </div>
+
+        <ThinkingPanel
+          v-if="testResult.reasoning"
+          :content="testResult.reasoning"
+          :duration-ms="testResult.durationMs"
+          title="模型思考过程"
+          :default-expanded="true"
+        />
+
+        <div v-if="testResult.reply" class="reply-card">
+          <div class="reply-label">模型回复</div>
+          <div class="reply-text">{{ testResult.reply }}</div>
+        </div>
+
+        <div v-if="testResult.error" class="error-card">
+          <div class="reply-label">错误信息</div>
+          <pre class="error-text">{{ testResult.error }}</pre>
+        </div>
+      </div>
+      <template #footer>
+        <el-button type="primary" @click="testDialogVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -225,13 +262,15 @@ import {
   Zap
 } from 'lucide-vue-next'
 import PageHeader from '@/components/common/PageHeader.vue'
+import ThinkingPanel from '@/components/ai/ThinkingPanel.vue'
 import {
   deleteLlmConfig,
   listLlmConfigs,
   saveLlmConfig,
   setDefaultLlmConfig,
   testLlmConfig,
-  type LlmModelConfigItem
+  type LlmModelConfigItem,
+  type LlmTestResult
 } from '@/api/llmConfig'
 
 const list = ref<LlmModelConfigItem[]>([])
@@ -240,6 +279,8 @@ const submitting = ref(false)
 const dialogVisible = ref(false)
 const formRef = ref<FormInstance>()
 const testingId = ref<number>()
+const testDialogVisible = ref(false)
+const testResult = ref<LlmTestResult>()
 
 interface Preset {
   label: string
@@ -364,12 +405,14 @@ async function onSetDefault(item: LlmModelConfigItem) {
 async function onTest(item: LlmModelConfigItem) {
   if (!item.id) return
   testingId.value = item.id
+  testResult.value = undefined
   try {
-    const r = await testLlmConfig(item.id)
-    if (r.success) {
-      ElMessage.success(`连通成功（${r.durationMs}ms）：${r.reply || ''}`)
+    testResult.value = await testLlmConfig(item.id)
+    testDialogVisible.value = true
+    if (testResult.value.success) {
+      ElMessage.success(`连通成功（${testResult.value.durationMs}ms）`)
     } else {
-      ElMessage.error('连通失败：' + (r.error || '未知错误'))
+      ElMessage.error('连通失败')
     }
   } finally {
     testingId.value = undefined
@@ -624,4 +667,78 @@ onMounted(loadList)
 
 .span-2 { grid-column: span 2; }
 .full   { width: 100%; }
+
+/* ---- 测试连通结果对话框 ---- */
+.test-result {
+  display: grid;
+  gap: 12px;
+}
+
+.test-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.test-summary.ok {
+  background: rgba(16, 185, 129, 0.10);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #6EE7B7;
+}
+
+.test-summary.fail {
+  background: rgba(239, 68, 68, 0.10);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #FCA5A5;
+}
+
+.test-summary strong {
+  color: var(--text-primary);
+}
+
+.test-summary span {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.reply-card,
+.error-card {
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--bg-subtle);
+}
+
+.error-card {
+  border-color: rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.reply-label {
+  margin-bottom: 6px;
+  color: var(--text-muted);
+  font-size: 11px;
+  letter-spacing: 0.4px;
+}
+
+.reply-text {
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.error-text {
+  margin: 0;
+  color: #FCA5A5;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
 </style>

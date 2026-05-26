@@ -26,6 +26,8 @@ public class CommandResponse {
     private Long critical;
     /** 兜底：原始模型输出 */
     private String rawOutput;
+    /** 模型思考过程（推理类模型） */
+    private String reasoning;
     private String modelName;
     private Integer durationMs;
 }

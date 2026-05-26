@@ -154,6 +154,7 @@ public class NlRuleService {
                 .warnings(warnings)
                 .durationMs(duration)
                 .modelName(chat.getLog().getModelName())
+                .reasoning(chat.getReasoning())
                 .build();
     }
 

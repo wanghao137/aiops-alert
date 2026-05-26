@@ -186,6 +186,7 @@ public class LlmModelConfigService {
                 return LlmTestResponse.builder()
                         .success(true)
                         .reply(reply)
+                        .reasoning(reasoning)
                         .durationMs(duration)
                         .modelName(config.getModelName())
                         .build();
@@ -196,6 +197,7 @@ public class LlmModelConfigService {
                 return LlmTestResponse.builder()
                         .success(true)
                         .reply("模型可达（思考输出: " + hint + "），但 max_tokens 偏小，业务调用建议 ≥ 8192")
+                        .reasoning(reasoning)
                         .durationMs(duration)
                         .modelName(config.getModelName())
                         .build();

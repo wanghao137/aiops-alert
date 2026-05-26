@@ -335,6 +335,7 @@ public class AlertEventService {
                 .eventReason(e.getEventReason())
                 .aiSummary(e.getAiSummary())
                 .aiSummaryStatus(e.getAiSummaryStatus())
+                .aiReasoning(e.getAiReasoning())
                 .firstTriggeredAt(e.getFirstTriggeredAt())
                 .lastTriggeredAt(e.getLastTriggeredAt())
                 .confirmedAt(e.getConfirmedAt())

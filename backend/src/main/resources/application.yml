@@ -69,7 +69,9 @@ spring:
   sql:
     init:
       mode: always
-      schema-locations: classpath:schema-h2.sql
+      schema-locations:
+        - classpath:schema-h2.sql
+        - classpath:schema-h2-upgrade.sql
       continue-on-error: true
   h2:
     console:

@@ -10,6 +10,7 @@ export interface CommandResult {
   pending?: number
   critical?: number
   rawOutput?: string
+  reasoning?: string
   modelName?: string
   durationMs?: number
 }

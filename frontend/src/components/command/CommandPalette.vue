@@ -45,6 +45,12 @@
             <small v-if="result.modelName">· {{ result.modelName }} · {{ result.durationMs }}ms</small>
           </div>
 
+          <ThinkingPanel
+            v-if="result.reasoning"
+            :content="result.reasoning"
+            title="AI 思考过程"
+          />
+
           <div v-if="result.intent === 'route' && result.routePath" class="route-card" @click="goto(result.routePath)">
             <ArrowRight :size="14" />
             打开 <code>{{ result.routePath }}</code>
@@ -103,6 +109,7 @@ import {
 } from 'lucide-vue-next'
 import { runCommand, type CommandResult } from '@/api/command'
 import { getAlertLevelMeta } from '@/utils/alertLevel'
+import ThinkingPanel from '@/components/ai/ThinkingPanel.vue'
 
 const props = defineProps<{ modelValue: boolean }>()
 const emit = defineEmits<{ (e: 'update:modelValue', v: boolean): void }>()

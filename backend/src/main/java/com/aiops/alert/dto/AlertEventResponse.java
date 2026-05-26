@@ -30,6 +30,8 @@ public class AlertEventResponse {
     /** AI 摘要：what / impact / causes / actions */
     private String aiSummary;
     private String aiSummaryStatus;
+    /** AI 思考过程 (reasoning_content) */
+    private String aiReasoning;
 
     private LocalDateTime firstTriggeredAt;
     private LocalDateTime lastTriggeredAt;

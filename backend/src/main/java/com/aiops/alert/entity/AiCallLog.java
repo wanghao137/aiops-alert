@@ -33,5 +33,8 @@ public class AiCallLog {
     private String status;
     private String errorMessage;
 
+    /** 模型思考过程（reasoning_content）— 推理模型独有 */
+    private String reasoningContent;
+
     private LocalDateTime createdAt;
 }

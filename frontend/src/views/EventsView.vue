@@ -7,7 +7,22 @@
     >
       <template #actions>
         <el-button :icon="RefreshIcon" @click="loadAll">刷新</el-button>
-        <el-button type="primary" :icon="ZapIcon" @click="openTrigger">手动触发</el-button>
+        <el-dropdown trigger="click" @command="onTriggerCmd">
+          <el-button type="primary">
+            <ZapIcon :size="14" />&nbsp;触发演示
+            <ChevronDown :size="13" style="margin-left: 4px;" />
+          </el-button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="story">
+                <Sparkles :size="13" />&nbsp;启动故事模式（自动爬升）
+              </el-dropdown-item>
+              <el-dropdown-item command="manual" divided>
+                <ZapIcon :size="13" />&nbsp;立即生成测试事件
+              </el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
       </template>
     </PageHeader>
 
@@ -160,6 +175,13 @@
           @refresh="onRefreshSummary"
         />
 
+        <!-- AI 思考过程（推理类模型独有） -->
+        <ThinkingPanel
+          v-if="detail.aiReasoning"
+          :content="detail.aiReasoning"
+          title="AI 思考过程"
+        />
+
         <!-- 元数据 -->
         <div class="kv">
           <div><span class="k">监控对象</span><span class="v">{{ detail.objectName }}</span></div>
@@ -278,11 +300,13 @@ import {
   AlertTriangle as AlertIcon,
   CheckCircle2 as CheckIcon,
   Sparkles, Activity, Clock,
-  Radio, BellOff, X, CheckCircle2
+  Radio, BellOff, X, CheckCircle2,
+  ChevronDown
 } from 'lucide-vue-next'
 import StatCard from '@/components/common/StatCard.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import AiSummaryCard from '@/components/alert/AiSummaryCard.vue'
+import ThinkingPanel from '@/components/ai/ThinkingPanel.vue'
 import { OBJECT_TYPES, getObjectTypeMeta } from '@/utils/objectType'
 import { getChannelTypeMeta } from '@/utils/channelType'
 import { ALERT_LEVELS, getAlertLevelMeta } from '@/utils/alertLevel'
@@ -297,6 +321,7 @@ import {
 import { listAlertRules, type AlertRuleItem } from '@/api/alertRule'
 import { listMonitorObjects, type MonitorObjectItem } from '@/api/monitorObject'
 import { useRealtimeStore } from '@/stores/realtime'
+import { forceStory } from '@/api/simulator'
 
 const allEvents = ref<AlertEventItem[]>([])
 const detail = ref<AlertEventItem>()
@@ -395,6 +420,47 @@ const triggerForm = reactive({
 })
 const ruleOptions = ref<AlertRuleItem[]>([])
 const triggerObjects = ref<MonitorObjectItem[]>([])
+
+async function onTriggerCmd(cmd: string | number | object) {
+  if (cmd === 'manual') {
+    await openTrigger()
+    return
+  }
+  if (cmd === 'story') {
+    await onStartStory()
+    return
+  }
+}
+
+/** 启动故事模式：随机挑一个启用的规则 + 对象 + 数值类指标，让模拟器爬升 */
+async function onStartStory() {
+  const rules = await listAlertRules({ status: 'ENABLED' })
+  if (!rules.length) {
+    ElMessage.warning('没有启用的告警规则，请先创建规则')
+    return
+  }
+  // 优先挑数值条件的规则（更利于"爬升"演示）
+  const numericRules = rules.filter((r) =>
+    (r.conditions || []).some((c) => ['GT', 'GE', 'LT', 'LE'].includes(c.compareOp))
+  )
+  const pool = numericRules.length ? numericRules : rules
+  const rule = pool[Math.floor(Math.random() * pool.length)]
+  const objectIds = rule.objectIds || []
+  if (!objectIds.length) {
+    ElMessage.warning(`规则 "${rule.ruleName}" 没有绑定对象`)
+    return
+  }
+  const objectId = objectIds[Math.floor(Math.random() * objectIds.length)]
+  const cond = (rule.conditions || [])[0]
+  if (!cond?.metricCode) {
+    ElMessage.warning(`规则 "${rule.ruleName}" 没有有效的触发条件`)
+    return
+  }
+  const objs = await listMonitorObjects({ objectType: rule.objectType, status: 'ENABLED' })
+  const objName = objs.find((o) => o.id === objectId)?.objectName || `#${objectId}`
+  const tip = await forceStory(objectId, cond.metricCode)
+  ElMessage.success(`故事已启动：${objName} · ${cond.metricName}。${tip}`)
+}
 
 async function openTrigger() {
   triggerForm.ruleId = undefined

@@ -22,4 +22,7 @@ public class NlRuleDraftResponse {
     /** AI 调用耗时 (ms) */
     private Integer durationMs;
     private String modelName;
+
+    /** 模型思考过程（reasoning_content），推理类模型独有 */
+    private String reasoning;
 }

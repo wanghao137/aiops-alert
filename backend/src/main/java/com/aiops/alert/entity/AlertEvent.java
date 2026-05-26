@@ -31,6 +31,8 @@ public class AlertEvent {
     private String eventReason;
     /** AI 摘要 JSON */
     private String aiSummary;
+    /** AI 思考过程 (reasoning_content) */
+    private String aiReasoning;
     /** PENDING / SUCCESS / FAILED */
     private String aiSummaryStatus;
 

@@ -2,81 +2,256 @@
 @tailwind components;
 @tailwind utilities;
 
+/* =============================================================
+   设计语言：Editorial × Terminal
+   - 真实"运维终端"质感 + 杂志编辑排版
+   - 主色用 electric cyan (dark) / sky blue (light)
+   - 大量等宽数字 + Space Grotesk display
+   - 主题：dark / light，通过 <html data-theme="..."> 切换
+============================================================= */
+
+/* ---------- 共享 token：字体 / 圆角 / 字体特性 ---------- */
 :root {
-  color-scheme: dark;
-  --bg-base: #0B1120;
-  --bg-panel: #111827;
-  --bg-subtle: #1F2937;
-  --bg-hover: #273244;
-  --line: #1F2937;
-  --line-subtle: #374151;
-  --text-primary: #F8FAFC;
-  --text-secondary: #CBD5E1;
-  --text-muted: #94A3B8;
-  --accent: #3B82F6;
+  /* 字体栈 */
+  --font-display: 'Space Grotesk', 'Noto Sans SC', -apple-system, system-ui, sans-serif;
+  --font-sans: 'Noto Sans SC', 'Space Grotesk', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* 圆角 */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
 }
 
-html,
-body,
-#app {
-  height: 100%;
+/* ---------- DARK 主题 ---------- */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  /* 背景层级 */
+  --bg-base: #07080C;
+  --bg-elev-1: #0E1018;
+  --bg-elev-2: #151823;
+  --bg-elev-3: #1C2030;
+
+  /* 描边 */
+  --line: #1C2030;
+  --line-strong: #2A2F3F;
+
+  /* 文本 */
+  --text-primary: #F4F5FB;
+  --text-secondary: #B5B9CC;
+  --text-muted: #6E7385;
+  --text-faint: #444859;
+
+  /* 主色（电光青） */
+  --accent: #7DD3FC;
+  --accent-soft: rgba(125, 211, 252, 0.12);
+  --accent-line: rgba(125, 211, 252, 0.35);
+
+  /* 状态色 */
+  --ok: #34D399;
+  --ok-soft: rgba(52, 211, 153, 0.12);
+  --warn: #FBBF24;
+  --warn-soft: rgba(251, 191, 36, 0.12);
+  --danger: #F87171;
+  --danger-soft: rgba(248, 113, 113, 0.12);
+  --critical: #FB7185;
+  --critical-soft: rgba(251, 113, 133, 0.14);
+
+  /* 内阴影：玻璃感 */
+  --inset: inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
+
+  /* 微噪点 + 网格背景纹理 */
+  --bg-image:
+    radial-gradient(ellipse 1200px 600px at 50% -10%, rgba(125, 211, 252, 0.06), transparent 70%),
+    radial-gradient(ellipse 800px 500px at 100% 110%, rgba(251, 191, 36, 0.04), transparent 70%),
+    linear-gradient(rgba(255, 255, 255, 0.012) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.012) 1px, transparent 1px);
 }
+
+/* ---------- LIGHT 主题 ---------- */
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  /* 背景层级（暖白调） */
+  --bg-base: #FAFAF9;
+  --bg-elev-1: #FFFFFF;
+  --bg-elev-2: #F5F6F8;
+  --bg-elev-3: #EAECEF;
+
+  /* 描边 */
+  --line: #E7E8EC;
+  --line-strong: #D4D6DC;
+
+  /* 文本 */
+  --text-primary: #0F1115;
+  --text-secondary: #3F4254;
+  --text-muted: #71758A;
+  --text-faint: #A4A8B6;
+
+  /* 主色（更深的 sky） */
+  --accent: #0284C7;
+  --accent-soft: rgba(2, 132, 199, 0.10);
+  --accent-line: rgba(2, 132, 199, 0.30);
+
+  /* 状态色（提高对比度） */
+  --ok: #059669;
+  --ok-soft: rgba(5, 150, 105, 0.10);
+  --warn: #B45309;
+  --warn-soft: rgba(180, 83, 9, 0.10);
+  --danger: #DC2626;
+  --danger-soft: rgba(220, 38, 38, 0.10);
+  --critical: #BE123C;
+  --critical-soft: rgba(190, 18, 60, 0.10);
+
+  /* 内阴影：纸张感 */
+  --inset: inset 0 1px 0 0 rgba(255, 255, 255, 0.7), 0 1px 2px rgba(15, 17, 21, 0.04);
+
+  /* 浅色背景纹理（更克制） */
+  --bg-image:
+    radial-gradient(ellipse 1200px 600px at 50% -10%, rgba(2, 132, 199, 0.05), transparent 70%),
+    radial-gradient(ellipse 800px 500px at 100% 110%, rgba(180, 83, 9, 0.03), transparent 70%),
+    linear-gradient(rgba(15, 17, 21, 0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 17, 21, 0.018) 1px, transparent 1px);
+}
+
+/* ---------- 默认行为 ---------- */
+html, body, #app { height: 100%; }
 
 body {
   margin: 0;
   background: var(--bg-base);
   color: var(--text-primary);
-  font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family: var(--font-sans);
   font-size: 14px;
+  font-feature-settings: 'cv11', 'ss01';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-image: var(--bg-image);
+  background-size: auto, auto, 32px 32px, 32px 32px;
+  background-attachment: fixed;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-* {
-  box-sizing: border-box;
+* { box-sizing: border-box; }
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--text-primary);
 }
 
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: #2a3447;
-  border-radius: 4px;
+  background: var(--line-strong);
+  border-radius: 3px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  background: #3a4762;
+  background: var(--text-faint);
 }
 
-/* Element Plus 暗色调微调 */
-.dark {
-  --el-bg-color: var(--bg-panel);
+/* Tailwind utility */
+.tabular-nums { font-variant-numeric: tabular-nums; }
+.font-display { font-family: var(--font-display); }
+.font-mono    { font-family: var(--font-mono); }
+
+/* ---------- Element Plus 适配 ----------
+   .dark 类继续用，但变量从我们的 token 注入。
+   light 模式下 element-plus 自动用默认浅色变量
+*/
+:root[data-theme='dark'] {
+  --el-bg-color: var(--bg-elev-1);
   --el-bg-color-page: var(--bg-base);
-  --el-bg-color-overlay: var(--bg-subtle);
+  --el-bg-color-overlay: var(--bg-elev-2);
   --el-text-color-primary: var(--text-primary);
   --el-text-color-regular: var(--text-secondary);
   --el-text-color-secondary: var(--text-muted);
   --el-border-color: var(--line);
   --el-border-color-light: var(--line);
   --el-border-color-lighter: var(--line);
-  --el-fill-color: var(--bg-subtle);
-  --el-fill-color-light: var(--bg-subtle);
+  --el-border-color-extra-light: var(--line);
+  --el-fill-color: var(--bg-elev-2);
+  --el-fill-color-light: var(--bg-elev-2);
+  --el-fill-color-lighter: var(--bg-elev-2);
+  --el-fill-color-blank: var(--bg-elev-1);
+  --el-color-primary: var(--accent);
+  --el-color-primary-light-3: rgba(125, 211, 252, 0.6);
+  --el-color-primary-light-5: rgba(125, 211, 252, 0.4);
+  --el-color-primary-light-7: rgba(125, 211, 252, 0.2);
+  --el-color-primary-dark-2: #38BDF8;
 }
 
-/* 通用面板 */
+:root[data-theme='light'] {
+  --el-color-primary: var(--accent);
+  --el-color-primary-light-3: rgba(2, 132, 199, 0.6);
+  --el-color-primary-light-5: rgba(2, 132, 199, 0.4);
+  --el-color-primary-light-7: rgba(2, 132, 199, 0.2);
+}
+
+/* Element Plus 按钮重制 */
+.el-button {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  transition: all 0.15s ease;
+}
+
+/* ---------- 通用面板 ---------- */
 .panel {
-  background: var(--bg-panel);
+  position: relative;
+  background: var(--bg-elev-1);
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--inset);
   padding: 18px;
 }
 
-.tabular-nums {
+/* Editorial 标签 — 短小全大写带刻度感 */
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.eyebrow::before {
+  content: '';
+  width: 8px;
+  height: 1px;
+  background: var(--text-muted);
+}
+
+/* 数字 hero */
+.hero-num {
+  font-family: var(--font-display);
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+/* ---------- 微动画 ---------- */
+@keyframes pulse-soft {
+  0%, 100% { opacity: 0.45; }
+  50%      { opacity: 1; }
+}
+
+@keyframes blink {
+  0%, 49%  { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes shimmer {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
 }

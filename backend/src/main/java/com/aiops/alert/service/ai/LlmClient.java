@@ -112,19 +112,22 @@ public class LlmClient {
             JsonNode root = objectMapper.readTree(respText);
             JsonNode message = root.path("choices").path(0).path("message");
             String content = message.path("content").asText("");
-            // 推理类模型可能把答案放在 reasoning_content 里
-            if (StrUtil.isBlank(content)) {
-                content = message.path("reasoning_content").asText("");
+            // 推理类模型把思考过程放在 reasoning_content
+            String reasoning = message.path("reasoning_content").asText("");
+            // 兜底：如果没有正文，就用思考内容当结果（避免空响应）
+            if (StrUtil.isBlank(content) && StrUtil.isNotBlank(reasoning)) {
+                content = reasoning;
             }
             JsonNode usage = root.path("usage");
             if (!usage.isMissingNode()) {
                 log.setPromptTokens(usage.path("prompt_tokens").asInt(0));
                 log.setCompletionTokens(usage.path("completion_tokens").asInt(0));
             }
+            log.setReasoningContent(truncate(reasoning, 32000));
             log.setDurationMs((int) (System.currentTimeMillis() - start));
             callLogMapper.insert(log);
 
-            return new ChatResult(content, log);
+            return new ChatResult(content, reasoning, log);
         } catch (Exception e) {
             log.setStatus("FAILED");
             log.setErrorMessage(StrUtil.maxLength(e.getMessage(), 1000));
@@ -173,7 +176,11 @@ public class LlmClient {
 
     @Data
     public static class ChatResult {
+        /** 模型最终回复（content） */
         private final String content;
+        /** 模型思考过程（reasoning_content），推理类模型才有 */
+        private final String reasoning;
+        /** 调用流水 */
         private final AiCallLog log;
     }
 }

@@ -117,6 +117,7 @@ public class EventSummaryService {
             }
             jsonMapper.readTree(content); // 校验 JSON 合法性
             event.setAiSummary(content);
+            event.setAiReasoning(result.getReasoning());
             event.setAiSummaryStatus("SUCCESS");
             eventMapper.updateById(event);
             broadcastSummary(event);
