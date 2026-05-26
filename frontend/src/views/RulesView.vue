@@ -1,29 +1,57 @@
 <template>
-  <div class="rules-view">
-    <PageHeader
-      eyebrow="ALERT RULES"
-      title="告警规则管理"
-      subtitle="为不同对象类型配置差异化告警规则。支持多条件 AND/OR、连续触发次数、最小告警间隔。AI 一句话生成规则即将上线。"
-    >
-      <template #actions>
-        <el-button :icon="RefreshIcon" @click="loadAll">刷新</el-button>
-        <el-button type="primary" :icon="PlusIcon" @click="openCreate">新增规则</el-button>
-      </template>
-    </PageHeader>
+  <div class="rules-v">
+    <!-- ========== HERO ========== -->
+    <section class="hero">
+      <div class="hero-left">
+        <div class="hero-eyebrow">
+          <span class="eyebrow">ALERT RULES</span>
+          <span class="dot-anim" />
+          <span class="hero-time">差异化触发 · 多对象绑定 · AI 一句话建规则</span>
+        </div>
+        <div class="hero-headline">
+          <span class="hero-num">{{ stats?.total ?? 0 }}</span>
+          <div class="hero-words">
+            <div class="hero-line-1">{{ (stats?.total ?? 0) > 0 ? '条规则在编排告警' : '尚未配置规则' }}</div>
+            <div class="hero-line-2">
+              启用 {{ stats?.enabled ?? 0 }} · 停用 {{ (stats?.total ?? 0) - (stats?.enabled ?? 0) }}
+              <template v-for="lv in stats?.byLevel ?? []" :key="lv.alertLevel">
+                · {{ lv.alertLevelName }} {{ lv.total }}
+              </template>
+            </div>
+          </div>
+        </div>
+      </div>
 
-    <!-- AI 入口横幅 -->
+      <div class="hero-right">
+        <button class="hero-action ghost" @click="loadAll">
+          <RefreshIcon :size="13" :stroke-width="1.6" /> 刷新
+        </button>
+        <button class="hero-action primary" @click="openCreate">
+          <PlusIcon :size="13" :stroke-width="1.6" /> 新增规则
+        </button>
+      </div>
+    </section>
+
+    <!-- ========== AI BANNER (终端式 + shimmer) ========== -->
     <section class="ai-banner" @click="onAiClick">
-      <div class="ai-bar">
-        <div class="ai-icon">
-          <Sparkles :size="18" />
+      <div class="ai-banner-inner">
+        <div class="ai-left">
+          <div class="ai-eyebrow">
+            <Sparkles :size="11" :stroke-width="1.8" />
+            <span>AI BUILDER · BETA</span>
+          </div>
+          <div class="ai-title">用一句话描述你的告警需求</div>
+          <div class="ai-terminal">
+            <span class="prompt-mark">$</span>
+            <span class="typewriter" :key="typingKey">{{ typingText }}</span>
+            <span class="caret" />
+          </div>
         </div>
-        <div class="ai-content">
-          <div class="ai-title">用一句话描述你的告警规则</div>
-          <div class="ai-hint">例如："当生产 MySQL 主从延迟超过 5 分钟、连续触发 3 次，发企微到 DBA 群，紧急级别"</div>
-        </div>
-        <div class="ai-cta">
-          AI 建规则
-          <ArrowRight :size="14" />
+        <div class="ai-right">
+          <span class="ai-cta">
+            打开 AI 控制台
+            <ArrowRight :size="13" :stroke-width="1.8" />
+          </span>
         </div>
       </div>
     </section>
@@ -31,38 +59,50 @@
     <!-- AI 对话框 -->
     <NlRuleDialog v-model="aiDialogVisible" @apply="onAiDraftApply" />
 
-    <!-- 顶部统计 -->
-    <section class="stat-row">
-      <StatCard label="规则总数" :value="stats?.total ?? 0" :icon="LayersIcon" accent="#3B82F6"
-        :hint="`其中 ${stats?.enabled ?? 0} 个启用`" />
-      <StatCard
-        v-for="lv in stats?.byLevel ?? []"
-        :key="lv.alertLevel"
-        :label="lv.alertLevelName"
-        :value="lv.total"
-        :icon="getAlertLevelMeta(lv.alertLevel).icon"
-        :accent="getAlertLevelMeta(lv.alertLevel).color"
-        hint="按级别分布"
-      />
+    <!-- ========== 级别分布条 ========== -->
+    <section v-if="stats && stats.total > 0" class="level-bar-row">
+      <div class="eyebrow inline">LEVEL DISTRIBUTION</div>
+      <div class="level-track">
+        <div
+          v-for="lv in stats.byLevel"
+          :key="lv.alertLevel"
+          class="level-seg"
+          :style="{
+            width: ((lv.total / stats.total) * 100) + '%',
+            background: getAlertLevelMeta(lv.alertLevel).color
+          }"
+          :title="`${lv.alertLevelName} ${lv.total}`"
+        />
+      </div>
+      <div class="level-legend">
+        <span v-for="lv in stats.byLevel" :key="lv.alertLevel" class="lv-item">
+          <span class="lv-dot" :style="{ background: getAlertLevelMeta(lv.alertLevel).color }" />
+          <span class="lv-name">{{ lv.alertLevelName }}</span>
+          <span class="lv-num tabular-nums">{{ lv.total }}</span>
+        </span>
+      </div>
     </section>
 
-    <!-- 筛选 -->
+    <!-- ========== Toolbar ========== -->
     <section class="toolbar">
-      <div class="type-tabs">
-        <button class="type-tab" :class="{ active: !filters.objectType }" @click="setType('')">
-          全部 <em>{{ stats?.total ?? 0 }}</em>
+      <div class="seg">
+        <button
+          class="seg-item"
+          :class="{ active: !filters.objectType }"
+          @click="setType('')"
+        >
+          全部 <em class="tabular-nums">{{ stats?.total ?? 0 }}</em>
         </button>
         <button
           v-for="t in OBJECT_TYPES"
           :key="t.value"
-          class="type-tab"
+          class="seg-item"
           :class="{ active: filters.objectType === t.value }"
-          :style="filters.objectType === t.value ? { borderColor: t.color, color: t.color } : {}"
           @click="setType(t.value)"
         >
-          <component :is="t.icon" :size="14" />
+          <component :is="t.icon" :size="12" :stroke-width="1.7" />
           {{ t.short }}
-          <em>{{ countOf(t.value) }}</em>
+          <em class="tabular-nums">{{ countOf(t.value) }}</em>
         </button>
       </div>
       <div class="filter-row">
@@ -75,87 +115,88 @@
         </el-select>
         <el-input v-model="filters.keyword" placeholder="搜索名称 / 编码 / 描述" clearable class="filter-input"
           @keyup.enter="loadList" @clear="loadList">
-          <template #prefix><SearchIcon :size="14" /></template>
+          <template #prefix><SearchIcon :size="13" :stroke-width="1.7" /></template>
         </el-input>
       </div>
     </section>
 
-    <!-- 列表 -->
-    <section v-loading="loading" class="card-grid"
-      :style="{ minHeight: list.length ? 'auto' : '240px' }">
+    <!-- ========== Rule List ========== -->
+    <section v-loading="loading" class="rule-list">
       <article
         v-for="item in list"
         :key="item.id"
         class="rule-card"
         :class="{ disabled: item.status === 'DISABLED' }"
       >
-        <header class="head">
-          <div class="level-bar" :style="{ background: getAlertLevelMeta(item.alertLevel).color }" />
-          <div class="meta">
+        <span class="lv-strip" :style="{ background: getAlertLevelMeta(item.alertLevel).color }" />
+
+        <div class="card-head">
+          <div class="head-meta">
             <div class="title-row">
-              <span class="rule-name" :title="item.ruleName">{{ item.ruleName }}</span>
-              <span class="level-pill" :style="{
-                background: getAlertLevelMeta(item.alertLevel).bg,
-                color: getAlertLevelMeta(item.alertLevel).color
-              }">
-                <component :is="getAlertLevelMeta(item.alertLevel).icon" :size="11" />
-                {{ item.alertLevelName }}
-              </span>
+              <span class="rule-name">{{ item.ruleName }}</span>
+              <span class="lv-tag" :style="{
+                color: getAlertLevelMeta(item.alertLevel).color,
+                borderColor: getAlertLevelMeta(item.alertLevel).color
+              }">{{ item.alertLevelName }}</span>
             </div>
             <div class="sub-row">
-              <span class="code">{{ item.ruleCode }}</span>
-              <span class="dot-sep" />
+              <span class="rule-code">{{ item.ruleCode }}</span>
+              <span class="sep">·</span>
               <span class="type-tag">
-                <component :is="getObjectTypeMeta(item.objectType).icon" :size="11" />
+                <component :is="getObjectTypeMeta(item.objectType).icon" :size="11" :stroke-width="1.7"
+                  :style="{ color: getObjectTypeMeta(item.objectType).color }" />
                 {{ item.objectTypeName }}
               </span>
-              <span class="dot-sep" />
-              <span :class="['status-mini', item.status === 'ENABLED' ? 'on' : 'off']">
-                {{ item.status === 'ENABLED' ? '启用' : '停用' }}
+              <span class="sep">·</span>
+              <span :class="['st-pill', item.status === 'ENABLED' ? 'on' : 'off']">
+                <span class="st-dot" />{{ item.status === 'ENABLED' ? '启用' : '停用' }}
               </span>
             </div>
           </div>
-        </header>
 
-        <div class="formula">
-          <span class="formula-label">触发条件</span>
+          <button class="toggle-btn" :class="{ on: item.status === 'ENABLED' }" @click="onToggle(item)">
+            <span class="toggle-knob" />
+          </button>
+        </div>
+
+        <div class="formula-block">
+          <span class="formula-mark">▸</span>
           <code class="formula-text">{{ formulaOf(item) }}</code>
         </div>
 
         <div class="strategy">
-          <span class="chip">连续 {{ item.triggerTimes }} 次</span>
-          <span class="chip">窗口 {{ item.timeWindowMinutes }} min</span>
-          <span class="chip">间隔 ≥ {{ item.minAlertIntervalMinutes }} min</span>
+          <span class="chip">连续 <b class="tabular-nums">{{ item.triggerTimes }}</b> 次</span>
+          <span class="chip">窗口 <b class="tabular-nums">{{ item.timeWindowMinutes }}</b> min</span>
+          <span class="chip">间隔 ≥ <b class="tabular-nums">{{ item.minAlertIntervalMinutes }}</b> min</span>
           <span v-if="item.recoverNotify" class="chip ok">恢复通知</span>
           <span v-if="item.repeatNotify" class="chip warn">重复通知</span>
         </div>
 
         <p v-if="item.description" class="desc" :title="item.description">{{ item.description }}</p>
 
-        <footer class="actions">
-          <el-button text @click="openDetail(item)"><EyeIcon :size="14" />&nbsp;详情</el-button>
-          <el-button text @click="openEdit(item)"><EditIcon :size="14" />&nbsp;编辑</el-button>
-          <el-button text @click="onToggle(item)">
-            <PowerIcon :size="14" />&nbsp;{{ item.status === 'ENABLED' ? '停用' : '启用' }}
-          </el-button>
+        <footer class="card-actions">
+          <button class="act-btn" @click="openDetail(item)"><EyeIcon :size="13" :stroke-width="1.7" />详情</button>
+          <button class="act-btn" @click="openEdit(item)"><EditIcon :size="13" :stroke-width="1.7" />编辑</button>
           <el-popconfirm title="确认删除该规则？" confirm-button-text="删除" cancel-button-text="取消"
             @confirm="onDelete(item)">
             <template #reference>
-              <el-button text type="danger"><TrashIcon :size="14" />&nbsp;删除</el-button>
+              <button class="act-btn danger"><TrashIcon :size="13" :stroke-width="1.7" />删除</button>
             </template>
           </el-popconfirm>
         </footer>
       </article>
 
       <div v-if="!loading && list.length === 0" class="empty">
-        <div class="empty-icon"><BellOffIcon :size="36" /></div>
+        <BellOffIcon :size="28" :stroke-width="1.4" />
         <div class="empty-title">暂无告警规则</div>
-        <div class="empty-hint">先添加监控对象，再为对象配置规则。或试试上面的"AI 一句话建规则"。</div>
-        <el-button type="primary" :icon="PlusIcon" @click="openCreate">新增规则</el-button>
+        <div class="empty-hint">先添加监控对象，再为对象配置规则。或试试上面的「AI 一句话建规则」。</div>
+        <button class="hero-action primary" @click="openCreate">
+          <PlusIcon :size="13" :stroke-width="1.7" /> 新增规则
+        </button>
       </div>
     </section>
 
-    <!-- 编辑对话框 -->
+    <!-- ========== 编辑对话框 ========== -->
     <el-dialog
       v-model="dialogVisible"
       :title="form.id ? '编辑告警规则' : '新增告警规则'"
@@ -164,7 +205,7 @@
       class="rule-dialog"
     >
       <el-form ref="formRef" :model="form" :rules="rules" label-position="top">
-        <div class="section-title">基础信息</div>
+        <div class="section-title"><span class="num">01</span>基础信息</div>
         <div class="form-grid">
           <el-form-item label="规则名称" prop="ruleName" class="span-2">
             <el-input v-model="form.ruleName" placeholder="例如：生产 MySQL 主从延迟告警" />
@@ -206,7 +247,7 @@
           </el-form-item>
         </div>
 
-        <div class="section-title">触发条件</div>
+        <div class="section-title"><span class="num">02</span>触发条件</div>
         <RuleConditionEditor
           v-model="form.conditions"
           v-model:logic="form.conditionLogic"
@@ -214,7 +255,7 @@
           :object-id="form.objectIds?.length === 1 ? form.objectIds[0] : undefined"
         />
 
-        <div class="section-title">触发策略</div>
+        <div class="section-title"><span class="num">03</span>触发策略</div>
         <div class="form-grid strategy-grid">
           <el-form-item label="连续触发次数">
             <el-input-number v-model="form.triggerTimes" :min="1" :max="100" controls-position="right" class="full" />
@@ -231,7 +272,7 @@
           </el-form-item>
         </div>
 
-        <div class="section-title">监控对象</div>
+        <div class="section-title"><span class="num">04</span>监控对象</div>
         <el-form-item prop="objectIds">
           <el-select
             v-model="form.objectIds"
@@ -255,14 +296,14 @@
             </el-option>
           </el-select>
           <div v-if="!availableObjects.length && form.objectType" class="hint-row">
-            <Lightbulb :size="13" />
+            <Lightbulb :size="12" :stroke-width="1.7" />
             该对象类型下还没有可用对象，先去
             <router-link to="/objects">监控对象</router-link>
             添加。
           </div>
         </el-form-item>
 
-        <div class="section-title">通知渠道</div>
+        <div class="section-title"><span class="num">05</span>通知渠道</div>
         <div class="channel-binding">
           <div v-for="(b, idx) in form.channelBindings" :key="idx" class="binding-row">
             <el-select v-model="b.channelId" placeholder="选择渠道" class="binding-channel">
@@ -283,11 +324,11 @@
             </el-select>
             <el-input v-model="b.receiverValue" placeholder="接收人（手机号/邮箱列表，留空使用渠道默认）" class="binding-receiver" />
             <button class="del-btn" type="button" @click="removeBinding(idx)">
-              <X :size="14" />
+              <X :size="13" :stroke-width="1.8" />
             </button>
           </div>
           <button class="add-btn" type="button" @click="addBinding">
-            <Plus :size="14" />&nbsp;添加渠道
+            <Plus :size="13" :stroke-width="1.8" />&nbsp;添加渠道
           </button>
         </div>
       </el-form>
@@ -298,25 +339,22 @@
       </template>
     </el-dialog>
 
-    <!-- 详情对话框 -->
-    <el-dialog v-model="detailVisible" title="规则详情" width="720px">
+    <!-- ========== 详情对话框 ========== -->
+    <el-dialog v-model="detailVisible" title="规则详情" width="720px" class="rule-detail-dialog">
       <div v-if="detail" class="detail-body">
         <div class="detail-head">
-          <div class="level-bar" :style="{ background: getAlertLevelMeta(detail.alertLevel).color }" />
-          <div>
+          <span class="lv-strip" :style="{ background: getAlertLevelMeta(detail.alertLevel).color }" />
+          <div class="head-meta">
             <div class="title-row">
               <span class="rule-name">{{ detail.ruleName }}</span>
-              <span class="level-pill" :style="{
-                background: getAlertLevelMeta(detail.alertLevel).bg,
-                color: getAlertLevelMeta(detail.alertLevel).color
-              }">
-                <component :is="getAlertLevelMeta(detail.alertLevel).icon" :size="11" />
-                {{ detail.alertLevelName }}
-              </span>
+              <span class="lv-tag" :style="{
+                color: getAlertLevelMeta(detail.alertLevel).color,
+                borderColor: getAlertLevelMeta(detail.alertLevel).color
+              }">{{ detail.alertLevelName }}</span>
             </div>
             <div class="sub-row">
-              <span class="code">{{ detail.ruleCode }}</span>
-              <span class="dot-sep" />
+              <span class="rule-code">{{ detail.ruleCode }}</span>
+              <span class="sep">·</span>
               <span class="type-tag">{{ detail.objectTypeName }}</span>
             </div>
           </div>
@@ -324,14 +362,17 @@
 
         <div class="detail-section">
           <div class="lbl">触发条件</div>
-          <code class="formula-text">{{ formulaOf(detail) }}</code>
+          <div class="formula-block">
+            <span class="formula-mark">▸</span>
+            <code class="formula-text">{{ formulaOf(detail) }}</code>
+          </div>
         </div>
 
         <div class="detail-section">
           <div class="lbl">监控对象 ({{ detail.objects?.length || 0 }})</div>
           <div class="brief-list">
             <span v-for="o in detail.objects" :key="o.id" class="brief-chip">
-              <component :is="getObjectTypeMeta(o.objectType).icon" :size="11"
+              <component :is="getObjectTypeMeta(o.objectType).icon" :size="11" :stroke-width="1.7"
                 :style="{ color: getObjectTypeMeta(o.objectType).color }" />
               {{ o.objectName }}
             </span>
@@ -342,7 +383,7 @@
           <div class="lbl">通知渠道 ({{ detail.channels?.length || 0 }})</div>
           <div class="brief-list">
             <span v-for="c in detail.channels" :key="c.id" class="brief-chip">
-              <component :is="getChannelTypeMeta(c.channelType).icon" :size="11"
+              <component :is="getChannelTypeMeta(c.channelType).icon" :size="11" :stroke-width="1.7"
                 :style="{ color: getChannelTypeMeta(c.channelType).color }" />
               {{ c.channelName }}
               <small v-if="c.receiverValue">→ {{ c.receiverValue }}</small>
@@ -353,9 +394,9 @@
         <div class="detail-section">
           <div class="lbl">触发策略</div>
           <div class="strategy">
-            <span class="chip">连续 {{ detail.triggerTimes }} 次</span>
-            <span class="chip">窗口 {{ detail.timeWindowMinutes }} min</span>
-            <span class="chip">间隔 ≥ {{ detail.minAlertIntervalMinutes }} min</span>
+            <span class="chip">连续 <b class="tabular-nums">{{ detail.triggerTimes }}</b> 次</span>
+            <span class="chip">窗口 <b class="tabular-nums">{{ detail.timeWindowMinutes }}</b> min</span>
+            <span class="chip">间隔 ≥ <b class="tabular-nums">{{ detail.minAlertIntervalMinutes }}</b> min</span>
             <span v-if="detail.recoverNotify" class="chip ok">恢复通知</span>
             <span v-if="detail.repeatNotify" class="chip warn">重复通知</span>
           </div>
@@ -370,17 +411,16 @@
   </div>
 </template>
 
+
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import {
   Plus as PlusIcon,
   RefreshCw as RefreshIcon,
   Search as SearchIcon,
   Edit3 as EditIcon,
-  Power as PowerIcon,
   Trash2 as TrashIcon,
-  Layers as LayersIcon,
   BellOff as BellOffIcon,
   Eye as EyeIcon,
   Plus,
@@ -389,12 +429,10 @@ import {
   ArrowRight,
   Lightbulb
 } from 'lucide-vue-next'
-import StatCard from '@/components/common/StatCard.vue'
-import PageHeader from '@/components/common/PageHeader.vue'
 import RuleConditionEditor from '@/components/alert/RuleConditionEditor.vue'
 import NlRuleDialog from '@/components/alert/NlRuleDialog.vue'
 import { OBJECT_TYPES, getObjectTypeMeta } from '@/utils/objectType'
-import { CHANNEL_TYPES, getChannelTypeMeta } from '@/utils/channelType'
+import { getChannelTypeMeta } from '@/utils/channelType'
 import { ALERT_LEVELS, getAlertLevelMeta } from '@/utils/alertLevel'
 import { useCatalogStore } from '@/stores/catalog'
 import {
@@ -424,6 +462,37 @@ const formRef = ref<FormInstance>()
 
 const filters = reactive({ objectType: '', alertLevel: '', status: '', keyword: '' })
 const aiDialogVisible = ref(false)
+
+/* ========== 终端打字机示例 ========== */
+const aiSamples = [
+  '当生产 MySQL 主从延迟 > 5 分钟，连续 3 次，发企微到 DBA 群，紧急级别',
+  '应用服务器 CPU 持续 10 分钟超过 85%，发邮件给运维',
+  '客户信息同步作业失败 2 次以上，紧急通知数据团队',
+  '数据加工作业输出条数为 0 时立即告警，发邮件 + 企微'
+]
+const typingText = ref('')
+const typingKey = ref(0)
+let typingTimer: ReturnType<typeof setTimeout> | null = null
+let sampleIdx = 0
+function startTyping() {
+  const sample = aiSamples[sampleIdx % aiSamples.length]
+  typingText.value = ''
+  typingKey.value++
+  let i = 0
+  const tick = () => {
+    if (i < sample.length) {
+      typingText.value += sample.charAt(i)
+      i++
+      typingTimer = setTimeout(tick, 38)
+    } else {
+      typingTimer = setTimeout(() => {
+        sampleIdx++
+        startTyping()
+      }, 2400)
+    }
+  }
+  tick()
+}
 
 const emptyForm = (): AlertRuleItem => ({
   ruleName: '',
@@ -505,7 +574,6 @@ function setType(type: string) {
 
 function openCreate() {
   Object.assign(form, emptyForm())
-  // 默认带一个条件占位
   initConditionsForType(form.objectType)
   dialogVisible.value = true
 }
@@ -542,14 +610,12 @@ function initConditionsForType(objectType: string) {
 }
 
 function onObjectTypeChange() {
-  // 切换对象类型时清空条件 + 对象选择
   initConditionsForType(form.objectType)
   form.objectIds = []
 }
 
 function addBinding() {
   if (!form.channelBindings) form.channelBindings = []
-  // 找一个还没绑过的渠道
   const used = new Set(form.channelBindings.map((b) => b.channelId))
   const next = allChannels.value.find((c) => c.id && !used.has(c.id))
   if (!next?.id) {
@@ -601,10 +667,8 @@ function onAiClick() {
 }
 
 function onAiDraftApply(draft: AlertRuleItem) {
-  // 把 AI 草稿合并到表单：保留默认值、AI 缺失的字段不会被覆盖
   Object.assign(form, emptyForm(), {
     ...draft,
-    // 强制启用，方便用户保存
     status: draft.status || 'ENABLED'
   })
   if (!form.conditions?.length) {
@@ -628,287 +692,582 @@ function formulaOf(rule: AlertRuleItem) {
 }
 
 watch(() => form.objectType, (val, old) => {
-  // 编辑模式下首次加载会触发一次，跳过
   if (val === old || !old) return
 })
 
-onMounted(loadAll)
+onMounted(() => {
+  loadAll()
+  startTyping()
+})
+
+onUnmounted(() => {
+  if (typingTimer) clearTimeout(typingTimer)
+})
 </script>
 
+
 <style scoped>
-.rules-view {
+.rules-v {
   display: grid;
-  gap: 16px;
+  gap: 22px;
+  padding: 0 28px 32px;
+  animation: fade-up 0.35s ease both;
 }
 
-.ai-banner {
-  cursor: pointer;
-  border-radius: 12px;
-  padding: 1px;
-  background: linear-gradient(120deg, rgba(59, 130, 246, 0.5), rgba(139, 92, 246, 0.5), rgba(245, 158, 11, 0.5));
-  background-size: 200% 200%;
-  animation: shimmer 8s linear infinite;
-}
-
-@keyframes shimmer {
-  0%   { background-position:   0% 50%; }
-  50%  { background-position: 100% 50%; }
-  100% { background-position:   0% 50%; }
-}
-
-.ai-bar {
+/* ========== HERO ========== */
+.hero {
   display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 32px;
+  padding: 28px 0;
+  border-bottom: 1px solid var(--line);
+  position: relative;
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 80px;
+  height: 1px;
+  background: var(--accent);
+}
+
+.hero-eyebrow {
+  display: inline-flex;
   align-items: center;
   gap: 12px;
-  padding: 14px 18px;
-  border-radius: 11px;
-  background: var(--bg-panel);
+  margin-bottom: 18px;
 }
 
-.ai-icon {
-  width: 36px;
-  height: 36px;
+.dot-anim {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ok);
+  animation: pulse-soft 2.4s ease-in-out infinite;
+}
+
+.hero-time {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: var(--text-muted);
+}
+
+.hero-headline {
+  display: flex;
+  align-items: flex-end;
+  gap: 28px;
+}
+
+.hero-num {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 84px;
+  letter-spacing: -0.05em;
+  line-height: 0.85;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.hero-words { padding-bottom: 6px; }
+
+.hero-line-1 {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.hero-line-2 {
+  margin-top: 6px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+}
+
+.hero-right {
+  display: inline-flex;
+  gap: 10px;
+}
+
+.hero-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--bg-elev-1);
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.hero-action.ghost:hover {
+  border-color: var(--accent-line);
+  color: var(--accent);
+}
+
+.hero-action.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg-base);
+  font-weight: 500;
+}
+
+.hero-action.primary:hover {
+  filter: brightness(1.08);
+}
+
+/* ========== AI BANNER (终端风) ========== */
+.ai-banner {
+  position: relative;
+  cursor: pointer;
+  padding: 1px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(120deg,
+    var(--accent-line) 0%,
+    transparent 30%,
+    var(--accent) 50%,
+    transparent 70%,
+    var(--accent-line) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 6s linear infinite;
+  transition: transform 0.2s ease;
+}
+
+.ai-banner:hover { transform: translateY(-1px); }
+
+.ai-banner-inner {
   display: grid;
-  place-items: center;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #3B82F6, #8B5CF6);
-  color: white;
-  flex-shrink: 0;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 24px;
+  padding: 18px 22px;
+  border-radius: calc(var(--radius-md) - 1px);
+  background: var(--bg-elev-1);
+  box-shadow: var(--inset);
 }
 
-.ai-content {
-  flex: 1;
-  min-width: 0;
+.ai-left { display: grid; gap: 8px; min-width: 0; }
+
+.ai-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: max-content;
+  padding: 3px 10px;
+  border: 1px solid var(--accent-line);
+  border-radius: 999px;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  background: var(--accent-soft);
 }
 
 .ai-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
   color: var(--text-primary);
-  font-weight: 600;
-  font-size: 14px;
 }
 
-.ai-hint {
-  margin-top: 2px;
-  color: var(--text-muted);
+.ai-terminal {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elev-2);
+  font-family: var(--font-mono);
   font-size: 12px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.prompt-mark {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.typewriter {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+}
+
+.caret {
+  display: inline-block;
+  width: 7px;
+  height: 14px;
+  background: var(--accent);
+  animation: blink 1s steps(2) infinite;
+  flex-shrink: 0;
 }
 
 .ai-cta {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
+  padding: 9px 18px;
   border-radius: 999px;
-  background: linear-gradient(135deg, #3B82F6, #8B5CF6);
-  color: white;
+  background: var(--accent);
+  color: var(--bg-base);
+  font-family: var(--font-sans);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
-.stat-row {
+/* ========== Level distribution ========== */
+.level-bar-row {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: max-content 1fr;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--bg-elev-1);
+  box-shadow: var(--inset);
 }
 
-@media (max-width: 1280px) {
-  .stat-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.eyebrow.inline { margin: 0; }
+
+.level-track {
+  display: flex;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--bg-elev-3);
 }
 
-@media (max-width: 760px) {
-  .stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.level-seg { transition: width 0.4s ease; }
+.level-seg + .level-seg { border-left: 1px solid var(--bg-elev-1); }
+
+.level-legend {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding-top: 4px;
+  border-top: 1px dashed var(--line);
 }
 
+.lv-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.lv-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 1.5px;
+}
+
+.lv-name { color: var(--text-secondary); }
+.lv-num { color: var(--text-primary); font-weight: 500; }
+
+/* ========== Toolbar ========== */
 .toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 12px 16px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--bg-panel);
+  gap: 14px;
   flex-wrap: wrap;
 }
 
-.type-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.seg {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--bg-elev-1);
+}
 
-.type-tab {
+.seg-item {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: 999px;
   background: transparent;
-  color: var(--text-secondary);
+  color: var(--text-muted);
+  font-family: var(--font-sans);
   font-size: 12px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.12s ease;
 }
 
-.type-tab:hover { color: var(--text-primary); border-color: var(--line-subtle); }
+.seg-item:hover { color: var(--text-primary); }
 
-.type-tab.active {
-  border-color: var(--accent);
+.seg-item.active {
+  background: var(--accent-soft);
   color: var(--accent);
-  background: rgba(59, 130, 246, 0.08);
 }
 
-.type-tab em {
+.seg-item em {
+  margin-left: 2px;
   padding: 1px 7px;
   border-radius: 999px;
-  background: var(--bg-subtle);
-  color: var(--text-muted);
+  background: var(--bg-elev-3);
+  color: var(--text-secondary);
   font-style: normal;
-  font-size: 11px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+.seg-item.active em {
+  background: var(--accent);
+  color: var(--bg-base);
 }
 
 .filter-row { display: flex; gap: 8px; }
 .filter-select { width: 130px; }
 .filter-input { width: 240px; }
 
-.card-grid {
+/* ========== Rule List ========== */
+.rule-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
   gap: 14px;
+  min-height: 240px;
 }
 
 .rule-card {
   position: relative;
   display: grid;
-  gap: 10px;
-  padding: 16px;
+  gap: 12px;
+  padding: 18px 20px 14px 22px;
   border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--bg-panel);
-  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  border-radius: var(--radius-md);
+  background: var(--bg-elev-1);
+  box-shadow: var(--inset);
+  overflow: hidden;
+  transition: transform 0.15s ease, border-color 0.15s ease;
 }
 
 .rule-card:hover {
   transform: translateY(-2px);
-  border-color: var(--line-subtle);
-  box-shadow: 0 16px 30px -20px rgba(0, 0, 0, 0.6);
+  border-color: var(--line-strong);
 }
 
 .rule-card.disabled {
-  opacity: 0.6;
+  opacity: 0.55;
 }
 
-.head {
+.lv-strip {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3px;
+}
+
+.card-head {
   display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
   gap: 12px;
 }
 
-.level-bar {
-  width: 4px;
-  border-radius: 4px;
-  flex-shrink: 0;
-}
-
-.meta { flex: 1; min-width: 0; }
+.head-meta { flex: 1; min-width: 0; display: grid; gap: 6px; }
 
 .title-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 4px;
+  flex-wrap: wrap;
 }
 
 .rule-name {
-  flex: 1;
+  font-family: var(--font-display);
+  font-size: 15.5px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
   color: var(--text-primary);
-  font-size: 14px;
-  font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  flex: 1;
+  min-width: 0;
 }
 
-.level-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
+.lv-tag {
+  padding: 1px 8px;
+  border: 1px solid;
   border-radius: 999px;
-  font-size: 11px;
-  font-weight: 600;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
 }
 
 .sub-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  color: var(--text-muted);
-  font-size: 11px;
   flex-wrap: wrap;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
 }
 
-.code { font-family: 'JetBrains Mono', monospace; }
+.rule-code { color: var(--text-secondary); }
 
-.dot-sep {
-  width: 3px;
-  height: 3px;
-  background: var(--text-muted);
-  border-radius: 50%;
-  opacity: 0.5;
-}
+.sep { color: var(--text-faint); }
 
 .type-tag {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  color: var(--text-secondary);
 }
 
-.status-mini.on { color: #6EE7B7; }
-.status-mini.off { color: var(--text-muted); }
+.st-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
 
-.formula {
+.st-pill.on  { background: var(--ok-soft);     color: var(--ok); }
+.st-pill.off { background: var(--bg-elev-3);   color: var(--text-muted); }
+
+.st-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.st-pill.on .st-dot {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+
+/* Toggle switch */
+.toggle-btn {
+  flex-shrink: 0;
+  width: 36px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--bg-elev-3);
+  cursor: pointer;
+  position: relative;
+  transition: all 0.18s ease;
+}
+
+.toggle-knob {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition: all 0.18s ease;
+}
+
+.toggle-btn.on {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.toggle-btn.on .toggle-knob {
+  left: 17px;
+  background: var(--bg-base);
+}
+
+/* Formula */
+.formula-block {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
   padding: 10px 12px;
   border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--bg-subtle);
-  display: grid;
-  gap: 4px;
+  border-left: 2px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elev-2);
 }
 
-.formula-label {
-  color: var(--text-muted);
-  font-size: 11px;
+.formula-mark {
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  flex-shrink: 0;
 }
 
 .formula-text {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: 12px;
   color: var(--text-primary);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12.5px;
-  white-space: pre-wrap;
   word-break: break-all;
+  line-height: 1.5;
 }
 
-.strategy { display: flex; flex-wrap: wrap; gap: 5px; }
+/* Strategy chips */
+.strategy {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
 
 .chip {
-  padding: 2px 8px;
-  border-radius: 6px;
-  border: 1px solid var(--line-subtle);
-  background: var(--bg-subtle);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--bg-elev-2);
   color: var(--text-secondary);
+  font-family: var(--font-mono);
   font-size: 11px;
 }
 
+.chip b { color: var(--text-primary); font-weight: 500; }
+
 .chip.ok {
-  border-color: rgba(16, 185, 129, 0.3);
-  background: rgba(16, 185, 129, 0.1);
-  color: #6EE7B7;
+  border-color: rgba(52, 211, 153, 0.3);
+  background: var(--ok-soft);
+  color: var(--ok);
 }
 
 .chip.warn {
-  border-color: rgba(245, 158, 11, 0.3);
-  background: rgba(245, 158, 11, 0.1);
-  color: #FCD34D;
+  border-color: rgba(251, 191, 36, 0.3);
+  background: var(--warn-soft);
+  color: var(--warn);
 }
 
 .desc {
@@ -922,54 +1281,107 @@ onMounted(loadAll)
   overflow: hidden;
 }
 
-.actions {
+.card-actions {
   display: flex;
   gap: 4px;
-  margin-top: auto;
-  padding-top: 6px;
+  margin-top: 2px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
 }
 
+.act-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.act-btn:hover {
+  background: var(--bg-elev-2);
+  color: var(--text-primary);
+}
+
+.act-btn.danger:hover {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+/* Empty */
 .empty {
   grid-column: 1 / -1;
   display: grid;
   place-items: center;
   gap: 8px;
   padding: 60px 20px;
-  border: 1px dashed var(--line-subtle);
-  border-radius: 12px;
-  text-align: center;
-}
-
-.empty-icon {
-  width: 64px;
-  height: 64px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--bg-subtle);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-md);
   color: var(--text-muted);
 }
 
 .empty-title {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 500;
   color: var(--text-primary);
-  font-size: 15px;
-  font-weight: 600;
 }
 
-.empty-hint { color: var(--text-muted); margin-bottom: 8px; }
+.empty-hint { font-size: 12px; margin-bottom: 8px; }
+
+/* ========== Dialog ========== */
+:deep(.rule-dialog .el-dialog),
+:deep(.rule-detail-dialog .el-dialog) {
+  background: var(--bg-elev-1);
+  border: 1px solid var(--line);
+  box-shadow: var(--inset);
+}
+
+:deep(.rule-dialog .el-dialog__title),
+:deep(.rule-detail-dialog .el-dialog__title) {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
 
 .section-title {
-  margin: 16px 0 10px;
-  padding: 6px 10px;
-  border-left: 3px solid var(--accent);
-  background: var(--bg-subtle);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+  font-family: var(--font-display);
+  font-size: 13.5px;
+  font-weight: 500;
   color: var(--text-primary);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.4px;
+  letter-spacing: -0.01em;
 }
 
 .section-title:first-child { margin-top: 0; }
+
+.section-title .num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elev-2);
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+}
 
 .form-grid {
   display: grid;
@@ -993,7 +1405,7 @@ onMounted(loadAll)
 .opt-code {
   margin-left: auto;
   color: var(--text-muted);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 11px;
 }
 
@@ -1002,12 +1414,13 @@ onMounted(loadAll)
   align-items: center;
   gap: 6px;
   margin-top: 6px;
-  color: #FCD34D;
+  color: var(--warn);
   font-size: 12px;
 }
 
 .hint-row a { color: var(--accent); margin: 0 4px; }
 
+/* Channel binding */
 .channel-binding { display: grid; gap: 8px; }
 
 .binding-row {
@@ -1027,9 +1440,9 @@ onMounted(loadAll)
   justify-content: center;
   height: 30px;
   padding: 0 10px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--line);
-  background: var(--bg-subtle);
+  background: var(--bg-elev-2);
   color: var(--text-muted);
   cursor: pointer;
   font-size: 12px;
@@ -1039,35 +1452,54 @@ onMounted(loadAll)
 .del-btn { width: 30px; padding: 0; }
 
 .del-btn:hover {
-  border-color: rgba(239, 68, 68, 0.4);
-  color: #FCA5A5;
-  background: rgba(239, 68, 68, 0.1);
+  border-color: var(--danger);
+  color: var(--danger);
+  background: var(--danger-soft);
 }
 
 .add-btn:hover {
   border-color: var(--accent);
   color: var(--accent);
-  background: rgba(59, 130, 246, 0.08);
+  background: var(--accent-soft);
 }
 
-.detail-body { display: grid; gap: 16px; }
+/* ========== Detail dialog ========== */
+.detail-body { display: grid; gap: 14px; }
 
-.detail-head { display: flex; gap: 12px; align-items: stretch; }
-.detail-head .level-bar { width: 3px; border-radius: 3px; }
+.detail-head {
+  position: relative;
+  display: flex;
+  gap: 14px;
+  padding: 14px 16px 14px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--bg-elev-2);
+}
+
+.detail-head .lv-strip {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3px;
+  border-radius: 3px 0 0 3px;
+}
 
 .detail-section {
-  padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--bg-subtle);
   display: grid;
   gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--bg-elev-1);
 }
 
 .detail-section .lbl {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
   color: var(--text-muted);
-  font-size: 11px;
-  letter-spacing: 0.4px;
 }
 
 .brief-list { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -1078,8 +1510,8 @@ onMounted(loadAll)
   gap: 4px;
   padding: 3px 9px;
   border-radius: 999px;
-  border: 1px solid var(--line-subtle);
-  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  background: var(--bg-elev-2);
   color: var(--text-secondary);
   font-size: 12px;
 }
@@ -1087,11 +1519,23 @@ onMounted(loadAll)
 .brief-chip small {
   color: var(--text-muted);
   margin-left: 2px;
+  font-family: var(--font-mono);
 }
 
 .desc-text {
   color: var(--text-secondary);
   font-size: 13px;
   line-height: 1.7;
+}
+
+/* Responsive */
+@media (max-width: 760px) {
+  .rules-v { padding: 0 14px 24px; }
+  .hero-num { font-size: 64px; }
+  .ai-banner-inner { grid-template-columns: 1fr; }
+  .ai-cta { width: max-content; }
+  .form-grid,
+  .strategy-grid { grid-template-columns: 1fr; }
+  .span-2, .span-3 { grid-column: span 1; }
 }
 </style>
