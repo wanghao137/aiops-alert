@@ -1,11 +1,10 @@
 @echo off
 setlocal EnableExtensions EnableDelayedExpansion
-chcp 65001 >nul
 title AIOps Alert - Stop
 
 echo.
 echo ============================================================
-echo   AIOps Alert  ^|  停止所有服务
+echo   AIOps Alert  ^|  停止所有服�?
 echo ============================================================
 echo.
 
@@ -14,7 +13,7 @@ call :KillByPort 5173 "前端 dev"
 call :KillByPort 4173 "前端 preview"
 
 echo.
-echo 完成。
+echo 完成�?
 timeout /t 2 >nul
 exit /b 0
 

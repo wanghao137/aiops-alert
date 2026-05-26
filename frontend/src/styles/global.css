@@ -249,8 +249,10 @@ body {
 }
 
 @keyframes fade-up {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: none; }
+  /* 注意：不要在这里用 transform —— 会让带此动画的元素成为
+     `position: fixed` 的 containing block，破坏 el-dialog 的全屏遮罩 */
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 @keyframes shimmer {
@@ -385,4 +387,61 @@ body {
   font-size: 10px;
   letter-spacing: 0.1em;
   pointer-events: none;
+}
+
+/* =============================================================
+   全局对话框（el-dialog）滚动修复
+   ----------------------------------------------------------------
+   element-plus 默认垂直居中，内容超过视口时底部直接溢出屏幕外，
+   按钮看不到。改成顶部对齐 + body 限高 + 自动滚动。
+============================================================= */
+
+/* dialog 容器：从顶部 6vh 处开始，最大高度撑满除顶/底之外的空间 */
+.el-overlay-dialog {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.el-dialog {
+  margin: 6vh auto !important;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  /* element-plus 默认在 inline style 上加 top: 15vh，覆盖掉 */
+  top: 0 !important;
+}
+
+/* header 不缩，footer 不缩，body 占余下空间且滚动 */
+.el-dialog__header {
+  flex: 0 0 auto;
+}
+
+.el-dialog__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  /* 让滚动条不挤掉边距 */
+  overscroll-behavior: contain;
+}
+
+.el-dialog__footer {
+  flex: 0 0 auto;
+  border-top: 1px solid var(--line);
+  background: var(--bg-elev-1);
+}
+
+/* 优化滚动条样式（仅在 dialog body 内） */
+.el-dialog__body::-webkit-scrollbar {
+  width: 8px;
+}
+.el-dialog__body::-webkit-scrollbar-track {
+  background: transparent;
+}
+.el-dialog__body::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: 4px;
+}
+.el-dialog__body::-webkit-scrollbar-thumb:hover {
+  background: var(--text-faint);
 }

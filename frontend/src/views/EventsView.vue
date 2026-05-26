@@ -45,7 +45,7 @@
     </section>
 
     <!-- ========== 三栏：状态侧栏 / 事件列表 / 详情 ========== -->
-    <section class="layout">
+    <section class="layout" :class="{ 'has-detail': !!detail }">
       <!-- 左：状态侧栏 + 实时流 -->
       <aside class="side">
         <div class="side-section">
@@ -647,18 +647,24 @@ onMounted(loadAll)
 /* ========== Layout ========== */
 .layout {
   display: grid;
-  grid-template-columns: 240px minmax(0, 1.05fr) minmax(0, 1.15fr);
+  grid-template-columns: 240px minmax(0, 1fr);
   gap: 16px;
   align-items: start;
 }
 
+.layout.has-detail {
+  grid-template-columns: 240px minmax(0, 1.05fr) minmax(0, 1.15fr);
+}
+
 @media (max-width: 1280px) {
-  .layout { grid-template-columns: 220px minmax(0, 1fr); }
+  .layout,
+  .layout.has-detail { grid-template-columns: 220px minmax(0, 1fr); }
   .detail { display: none; }
 }
 
 @media (max-width: 900px) {
-  .layout { grid-template-columns: 1fr; }
+  .layout,
+  .layout.has-detail { grid-template-columns: 1fr; }
 }
 
 /* 左侧 */
