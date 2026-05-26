@@ -1,117 +1,153 @@
 <template>
-  <div class="settings-view">
-    <PageHeader
-      eyebrow="SYSTEM SETTINGS"
-      title="系统设置"
-      subtitle="配置 LLM 模型，支持 OpenAI / DeepSeek / Qwen 等兼容 OpenAI 协议的服务。设置默认模型后，AI 建规则、告警摘要等能力即可启用。"
-    >
-      <template #actions>
-        <el-button :icon="RefreshIcon" @click="loadList">刷新</el-button>
-        <el-button type="primary" :icon="PlusIcon" @click="openCreate">新增 LLM 配置</el-button>
-      </template>
-    </PageHeader>
+  <div class="settings-v">
+    <!-- ========== HERO ========== -->
+    <section class="hero">
+      <div class="hero-left">
+        <div class="hero-eyebrow">
+          <span class="eyebrow">SYSTEM SETTINGS</span>
+          <span class="dot-anim" :class="{ ok: hasDefault }" />
+          <span class="hero-time">{{ hasDefault ? 'AI 能力已启用' : 'AI 能力未启用' }}</span>
+        </div>
+        <div class="hero-headline">
+          <span class="hero-num">{{ list.length }}</span>
+          <div class="hero-words">
+            <div class="hero-line-1">{{ list.length > 0 ? '个 LLM 配置就绪' : '尚未配置 LLM' }}</div>
+            <div class="hero-line-2">
+              <template v-if="hasDefault">
+                默认 · {{ defaultConfig?.configName }} · {{ defaultConfig?.modelName }}
+              </template>
+              <template v-else>
+                添加 OpenAI / DeepSeek / Qwen / GLM 兼容协议的服务，启用 AI 建规则与告警摘要
+              </template>
+            </div>
+          </div>
+        </div>
+      </div>
 
-    <!-- 状态提示 -->
-    <section class="hint-banner" :class="hasDefault ? 'ok' : 'warn'">
-      <component :is="hasDefault ? CheckIcon : AlertIcon" :size="16" />
-      <span v-if="hasDefault">
-        当前默认模型：<strong>{{ defaultConfig?.configName }}</strong>
-        ({{ defaultConfig?.provider }} · {{ defaultConfig?.modelName }})
-        — AI 能力已启用。
-      </span>
-      <span v-else>
-        尚未设置默认模型 — AI 建规则等能力暂不可用。点击"新增 LLM 配置"添加一个。
-      </span>
+      <div class="hero-right">
+        <button class="hero-action ghost" @click="loadList">
+          <RefreshIcon :size="13" :stroke-width="1.6" /> 刷新
+        </button>
+        <button class="hero-action primary" @click="openCreate">
+          <PlusIcon :size="13" :stroke-width="1.6" /> 新增 LLM
+        </button>
+      </div>
     </section>
 
-    <!-- 列表 -->
-    <section v-loading="loading" class="card-grid"
+    <!-- ========== Status banner ========== -->
+    <section class="status-banner" :class="hasDefault ? 'ok' : 'warn'">
+      <span class="banner-icon">
+        <component :is="hasDefault ? CheckIcon : AlertIcon" :size="13" :stroke-width="1.8" />
+      </span>
+      <div class="banner-text">
+        <template v-if="hasDefault">
+          当前默认模型：<strong>{{ defaultConfig?.configName }}</strong>
+          <span class="banner-meta">{{ defaultConfig?.provider }} · {{ defaultConfig?.modelName }}</span>
+        </template>
+        <template v-else>
+          尚未设置默认模型 — AI 建规则等能力暂不可用，添加一个 LLM 配置后即可启用。
+        </template>
+      </div>
+    </section>
+
+    <!-- ========== LLM Cards ========== -->
+    <section v-loading="loading" class="llm-list"
       :style="{ minHeight: list.length ? 'auto' : '240px' }">
       <article
         v-for="item in list"
         :key="item.id"
         class="llm-card"
-        :class="{ 'is-default': item.isDefault }"
+        :class="{ 'is-default': item.isDefault, disabled: item.status !== 'ENABLED' }"
       >
-        <header class="head">
-          <div class="icon">
-            <BrainIcon :size="18" />
+        <!-- 左：大模型标识 -->
+        <div class="card-left">
+          <div class="provider-badge" :class="providerClass(item.provider)">
+            <component :is="providerIcon(item.provider)" :size="14" :stroke-width="1.7" />
+            <span>{{ item.provider }}</span>
           </div>
-          <div class="meta">
-            <div class="name-row">
-              <span class="name">{{ item.configName }}</span>
-              <span v-if="item.isDefault" class="default-pill">
-                <BadgeCheck :size="11" />
-                默认
-              </span>
+          <div class="model-display">{{ item.modelName }}</div>
+          <div class="config-name">{{ item.configName }}</div>
+
+          <div class="status-tags">
+            <span v-if="item.isDefault" class="tag default">
+              <Crown :size="10" :stroke-width="1.8" />
+              DEFAULT
+            </span>
+            <span class="tag" :class="item.status === 'ENABLED' ? 'on' : 'off'">
+              <span class="tag-dot" />
+              {{ item.status === 'ENABLED' ? 'ENABLED' : 'DISABLED' }}
+            </span>
+          </div>
+        </div>
+
+        <!-- 右：配置详情 -->
+        <div class="card-right">
+          <div class="kv-row">
+            <span class="kv-key">BASE URL</span>
+            <code class="kv-val">{{ item.baseUrl }}</code>
+          </div>
+          <div class="kv-row">
+            <span class="kv-key">API KEY</span>
+            <code class="kv-val muted">{{ item.apiKeyMasked || '— 未设置 —' }}</code>
+          </div>
+          <div class="kv-row split">
+            <div>
+              <span class="kv-key">TEMPERATURE</span>
+              <span class="kv-val tabular-nums">{{ item.temperature ?? '-' }}</span>
             </div>
-            <div class="sub">
-              <span class="provider">{{ item.provider }}</span>
-              <span class="dot-sep" />
-              <span class="model">{{ item.modelName }}</span>
+            <div>
+              <span class="kv-key">MAX TOKENS</span>
+              <span class="kv-val tabular-nums">{{ item.maxTokens ?? '-' }}</span>
             </div>
           </div>
-          <span class="status-pill" :class="item.status === 'ENABLED' ? 'on' : 'off'">
-            <span class="dot" />
-            {{ item.status === 'ENABLED' ? '启用' : '停用' }}
-          </span>
-        </header>
+          <p v-if="item.description" class="card-desc">{{ item.description }}</p>
 
-        <div class="row">
-          <span class="lbl">Base URL</span>
-          <code class="val mono">{{ item.baseUrl }}</code>
+          <footer class="card-actions">
+            <button v-if="!item.isDefault" class="act-btn" @click="onSetDefault(item)">
+              <Crown :size="12" :stroke-width="1.7" />设为默认
+            </button>
+            <button class="act-btn" @click="openEdit(item)">
+              <EditIcon :size="12" :stroke-width="1.7" />编辑
+            </button>
+            <button class="act-btn" :disabled="testingId === item.id" @click="onTest(item)">
+              <span v-if="testingId === item.id" class="mini-spinner" />
+              <Zap v-else :size="12" :stroke-width="1.7" />
+              {{ testingId === item.id ? '测试中…' : '测试连通' }}
+            </button>
+            <el-popconfirm title="确认删除该配置？删除后 AI 能力可能不可用" confirm-button-text="删除"
+              cancel-button-text="取消" @confirm="onDelete(item)">
+              <template #reference>
+                <button class="act-btn danger">
+                  <TrashIcon :size="12" :stroke-width="1.7" />删除
+                </button>
+              </template>
+            </el-popconfirm>
+          </footer>
         </div>
-        <div class="row">
-          <span class="lbl">API Key</span>
-          <span class="val mono">{{ item.apiKeyMasked || '未设置' }}</span>
-        </div>
-        <div class="row">
-          <span class="lbl">温度 / Token</span>
-          <span>{{ item.temperature ?? '-' }} / {{ item.maxTokens ?? '-' }}</span>
-        </div>
-
-        <p v-if="item.description" class="desc">{{ item.description }}</p>
-
-        <footer class="actions">
-          <el-button v-if="!item.isDefault" text @click="onSetDefault(item)">
-            <Crown :size="14" />&nbsp;设为默认
-          </el-button>
-          <el-button text @click="openEdit(item)">
-            <EditIcon :size="14" />&nbsp;编辑
-          </el-button>
-          <el-button text :loading="testingId === item.id" @click="onTest(item)">
-            <Zap :size="14" />&nbsp;测试连通
-          </el-button>
-          <el-popconfirm title="确认删除该配置？删除后 AI 能力可能不可用" confirm-button-text="删除"
-            cancel-button-text="取消" @confirm="onDelete(item)">
-            <template #reference>
-              <el-button text type="danger">
-                <TrashIcon :size="14" />&nbsp;删除
-              </el-button>
-            </template>
-          </el-popconfirm>
-        </footer>
       </article>
 
       <div v-if="!loading && list.length === 0" class="empty">
-        <div class="empty-icon"><BrainIcon :size="36" /></div>
+        <BrainIcon :size="28" :stroke-width="1.4" />
         <div class="empty-title">还没有 LLM 配置</div>
-        <div class="empty-hint">配置一个 OpenAI 兼容的服务（GPT-4o / DeepSeek / Qwen 等），AI 建规则就能用。</div>
-        <el-button type="primary" :icon="PlusIcon" @click="openCreate">新增 LLM 配置</el-button>
+        <div class="empty-hint">配置一个 OpenAI 兼容的服务（GPT-4o / DeepSeek / Qwen / GLM），AI 能力就能用。</div>
+        <button class="hero-action primary" @click="openCreate">
+          <PlusIcon :size="13" :stroke-width="1.7" /> 新增 LLM 配置
+        </button>
       </div>
     </section>
 
-    <!-- 编辑对话框 -->
+    <!-- ========== 编辑对话框 ========== -->
     <el-dialog
       v-model="dialogVisible"
       :title="form.id ? '编辑 LLM 配置' : '新增 LLM 配置'"
-      width="640px"
+      width="660px"
       :close-on-click-modal="false"
+      class="llm-dialog"
     >
       <el-form ref="formRef" :model="form" :rules="rules" label-position="top">
         <!-- 快速预设 -->
         <div v-if="!form.id" class="preset-row">
-          <span class="preset-label">快速预设</span>
+          <span class="preset-label">PRESETS</span>
           <button
             v-for="p in presets"
             :key="p.label"
@@ -119,7 +155,7 @@
             type="button"
             @click="applyPreset(p)"
           >
-            <component :is="Sparkles" :size="12" />
+            <Sparkles :size="11" :stroke-width="1.8" />
             {{ p.label }}
           </button>
         </div>
@@ -206,18 +242,26 @@
       </template>
     </el-dialog>
 
-    <!-- 测试连通结果 -->
+    <!-- ========== 测试连通结果 ========== -->
     <el-dialog
       v-model="testDialogVisible"
       title="LLM 测试连通结果"
-      width="640px"
+      width="660px"
+      class="llm-dialog"
     >
       <div v-if="testResult" class="test-result">
-        <div class="test-summary" :class="testResult.success ? 'ok' : 'fail'">
-          <component :is="testResult.success ? CheckIcon : AlertIcon" :size="16" />
-          <strong>{{ testResult.success ? '连通成功' : '连通失败' }}</strong>
-          <span v-if="testResult.modelName">· {{ testResult.modelName }}</span>
-          <span v-if="testResult.durationMs">· {{ testResult.durationMs }}ms</span>
+        <div class="test-banner" :class="testResult.success ? 'ok' : 'fail'">
+          <span class="banner-icon">
+            <component :is="testResult.success ? CheckIcon : AlertIcon" :size="13" :stroke-width="1.8" />
+          </span>
+          <div class="banner-content">
+            <strong>{{ testResult.success ? '连通成功' : '连通失败' }}</strong>
+            <div class="banner-meta">
+              <span v-if="testResult.modelName">{{ testResult.modelName }}</span>
+              <span v-if="testResult.durationMs" class="sep">·</span>
+              <span v-if="testResult.durationMs" class="tabular-nums">{{ testResult.durationMs }}ms</span>
+            </div>
+          </div>
         </div>
 
         <ThinkingPanel
@@ -229,12 +273,12 @@
         />
 
         <div v-if="testResult.reply" class="reply-card">
-          <div class="reply-label">模型回复</div>
+          <div class="reply-label">MODEL REPLY</div>
           <div class="reply-text">{{ testResult.reply }}</div>
         </div>
 
         <div v-if="testResult.error" class="error-card">
-          <div class="reply-label">错误信息</div>
+          <div class="reply-label">ERROR</div>
           <pre class="error-text">{{ testResult.error }}</pre>
         </div>
       </div>
@@ -245,8 +289,9 @@
   </div>
 </template>
 
+
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, type Component } from 'vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import {
   Plus as PlusIcon,
@@ -256,12 +301,13 @@ import {
   Brain as BrainIcon,
   CheckCircle2 as CheckIcon,
   AlertTriangle as AlertIcon,
-  BadgeCheck,
   Crown,
   Sparkles,
-  Zap
+  Zap,
+  Cpu,
+  Bot,
+  Globe
 } from 'lucide-vue-next'
-import PageHeader from '@/components/common/PageHeader.vue'
 import ThinkingPanel from '@/components/ai/ThinkingPanel.vue'
 import {
   deleteLlmConfig,
@@ -345,6 +391,21 @@ const rules: FormRules = {
 const defaultConfig = computed(() => list.value.find((i) => i.isDefault && i.status === 'ENABLED'))
 const hasDefault = computed(() => !!defaultConfig.value)
 
+function providerIcon(p?: string): Component {
+  const map: Record<string, Component> = {
+    OPENAI: Sparkles,
+    DEEPSEEK: Cpu,
+    QWEN: Bot,
+    ZHIPU: BrainIcon,
+    CUSTOM: Globe
+  }
+  return map[p || ''] || Globe
+}
+
+function providerClass(p?: string) {
+  return `p-${(p || 'CUSTOM').toLowerCase()}`
+}
+
 async function loadList() {
   loading.value = true
   try {
@@ -373,7 +434,6 @@ async function onSubmit() {
   if (!valid) return
   submitting.value = true
   try {
-    // 编辑且未填新 key 时，不传 apiKey 字段，由后端保留原值
     const payload: LlmModelConfigItem = { ...form }
     if (form.id && !form.apiKey) {
       const original = list.value.find((i) => i.id === form.id)
@@ -429,197 +489,436 @@ function applyPreset(p: Preset) {
 onMounted(loadList)
 </script>
 
-<style scoped>
-.settings-view { display: grid; gap: 16px; }
 
-.hint-banner {
+<style scoped>
+.settings-v {
+  display: grid;
+  gap: 22px;
+  padding: 0 28px 32px;
+  animation: fade-up 0.35s ease both;
+}
+
+/* ========== HERO ========== */
+.hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 32px;
+  padding: 28px 0;
+  border-bottom: 1px solid var(--line);
+  position: relative;
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 80px;
+  height: 1px;
+  background: var(--accent);
+}
+
+.hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.dot-anim {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--warn);
+  animation: pulse-soft 2.4s ease-in-out infinite;
+}
+
+.dot-anim.ok { background: var(--ok); }
+
+.hero-time {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: var(--text-muted);
+}
+
+.hero-headline {
+  display: flex;
+  align-items: flex-end;
+  gap: 28px;
+}
+
+.hero-num {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 84px;
+  letter-spacing: -0.05em;
+  line-height: 0.85;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.hero-words { padding-bottom: 6px; }
+
+.hero-line-1 {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.hero-line-2 {
+  margin-top: 6px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+}
+
+.hero-right {
+  display: inline-flex;
+  gap: 10px;
+}
+
+.hero-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--bg-elev-1);
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.hero-action.ghost:hover {
+  border-color: var(--accent-line);
+  color: var(--accent);
+}
+
+.hero-action.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg-base);
+  font-weight: 500;
+}
+
+.hero-action.primary:hover { filter: brightness(1.08); }
+
+/* ========== Status banner ========== */
+.status-banner {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   padding: 12px 16px;
-  border-radius: 10px;
-  font-size: 13px;
+  border: 1px solid var(--line);
+  border-left: 2px solid;
+  border-radius: var(--radius-md);
+  background: var(--bg-elev-1);
+  box-shadow: var(--inset);
 }
 
-.hint-banner.ok {
-  border: 1px solid rgba(16, 185, 129, 0.3);
-  background: rgba(16, 185, 129, 0.08);
-  color: #6EE7B7;
-}
+.status-banner.ok    { border-left-color: var(--ok); }
+.status-banner.warn  { border-left-color: var(--warn); }
 
-.hint-banner.warn {
-  border: 1px solid rgba(245, 158, 11, 0.3);
-  background: rgba(245, 158, 11, 0.08);
-  color: #FCD34D;
-}
-
-.hint-banner strong { color: var(--text-primary); }
-
-.card-grid {
+.banner-icon {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.status-banner.ok   .banner-icon { background: var(--ok-soft);   color: var(--ok); }
+.status-banner.warn .banner-icon { background: var(--warn-soft); color: var(--warn); }
+
+.banner-text {
+  flex: 1;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.banner-text strong {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.banner-meta {
+  margin-left: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ========== LLM Cards ========== */
+.llm-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
   gap: 14px;
 }
 
 .llm-card {
   display: grid;
-  gap: 10px;
-  padding: 16px;
+  grid-template-columns: minmax(160px, 220px) 1fr;
+  gap: 0;
   border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--bg-panel);
-  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  border-radius: var(--radius-md);
+  background: var(--bg-elev-1);
+  box-shadow: var(--inset);
+  overflow: hidden;
+  transition: transform 0.15s ease, border-color 0.15s ease;
 }
 
 .llm-card:hover {
   transform: translateY(-2px);
-  border-color: var(--line-subtle);
-  box-shadow: 0 16px 30px -20px rgba(0, 0, 0, 0.6);
+  border-color: var(--line-strong);
 }
 
 .llm-card.is-default {
-  border-color: rgba(59, 130, 246, 0.4);
+  border-color: var(--accent-line);
   background:
-    radial-gradient(circle at 0% 0%, rgba(59, 130, 246, 0.10), transparent 60%),
-    var(--bg-panel);
+    radial-gradient(circle at 0% 0%, var(--accent-soft), transparent 60%),
+    var(--bg-elev-1);
 }
 
-.head { display: flex; align-items: center; gap: 10px; }
+.llm-card.disabled .card-left,
+.llm-card.disabled .card-right {
+  opacity: 0.55;
+}
 
-.icon {
-  width: 36px;
-  height: 36px;
+.card-left {
   display: grid;
-  place-items: center;
-  border-radius: 9px;
-  background: linear-gradient(135deg, #3B82F6, #8B5CF6);
-  color: white;
-  flex-shrink: 0;
+  align-content: start;
+  gap: 8px;
+  padding: 18px 16px 16px;
+  background: var(--bg-elev-2);
+  border-right: 1px solid var(--line);
 }
 
-.meta { flex: 1; min-width: 0; }
-
-.name-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.name {
-  color: var(--text-primary);
-  font-weight: 600;
-  font-size: 14px;
-}
-
-.default-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 1px 7px;
-  border-radius: 999px;
-  background: rgba(59, 130, 246, 0.18);
-  color: #93C5FD;
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.sub {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 2px;
-  color: var(--text-muted);
-  font-size: 12px;
-}
-
-.dot-sep {
-  width: 3px; height: 3px;
-  background: var(--text-muted);
-  border-radius: 50%;
-  opacity: 0.5;
-}
-
-.status-pill {
+.provider-badge {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 2px 9px;
+  width: max-content;
+  padding: 3px 9px;
+  border: 1px solid var(--line);
   border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  background: var(--bg-elev-1);
+  color: var(--text-secondary);
+}
+
+.provider-badge.p-openai   { color: var(--ok);     border-color: rgba(52, 211, 153, 0.4); }
+.provider-badge.p-deepseek { color: var(--accent); border-color: var(--accent-line); }
+.provider-badge.p-qwen     { color: var(--warn);   border-color: rgba(251, 191, 36, 0.4); }
+.provider-badge.p-zhipu    { color: var(--critical); border-color: rgba(251, 113, 133, 0.4); }
+.provider-badge.p-custom   { color: var(--text-muted); }
+
+.model-display {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--text-primary);
+  word-break: break-word;
+}
+
+.config-name {
+  font-family: var(--font-mono);
   font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
 }
 
-.status-pill.on {
-  background: rgba(16, 185, 129, 0.12);
-  color: #6EE7B7;
+.status-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 6px;
 }
 
-.status-pill.off {
-  background: rgba(148, 163, 184, 0.12);
-  color: #94A3B8;
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
 }
 
-.status-pill .dot {
-  width: 6px; height: 6px;
+.tag.default {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid var(--accent-line);
+}
+
+.tag.on  { background: var(--ok-soft);     color: var(--ok); }
+.tag.off { background: var(--bg-elev-3);   color: var(--text-muted); }
+
+.tag-dot {
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   background: currentColor;
 }
 
-.row {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  font-size: 12px;
-  color: var(--text-secondary);
+.tag.on .tag-dot { animation: pulse-soft 2s ease-in-out infinite; }
+
+/* Right side */
+.card-right {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 16px 18px;
 }
 
-.lbl { color: var(--text-muted); }
+.kv-row {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+}
 
-.val.mono {
-  font-family: 'JetBrains Mono', monospace;
+.kv-row.split {
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.kv-row.split > div {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 8px;
+  align-items: center;
+}
+
+.kv-key {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  color: var(--text-muted);
+}
+
+.kv-val {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
   font-size: 11.5px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 220px;
 }
 
-.desc {
-  margin: 0;
+.kv-val.muted { color: var(--text-muted); }
+
+.card-desc {
+  margin: 4px 0 0;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line);
   color: var(--text-muted);
   font-size: 12px;
   line-height: 1.6;
 }
 
-.actions {
+.card-actions {
   display: flex;
   gap: 4px;
-  margin-top: auto;
-  padding-top: 6px;
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+  flex-wrap: wrap;
 }
 
+.act-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 9px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 11.5px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.act-btn:hover {
+  background: var(--bg-elev-2);
+  color: var(--text-primary);
+}
+
+.act-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.act-btn.danger:hover {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.mini-spinner {
+  width: 11px;
+  height: 11px;
+  border: 1.4px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Empty */
 .empty {
   grid-column: 1 / -1;
   display: grid;
   place-items: center;
   gap: 8px;
   padding: 60px 20px;
-  border: 1px dashed var(--line-subtle);
-  border-radius: 12px;
-  text-align: center;
-}
-
-.empty-icon {
-  width: 64px;
-  height: 64px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--bg-subtle);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-md);
   color: var(--text-muted);
 }
 
-.empty-title { color: var(--text-primary); font-size: 15px; font-weight: 600; }
-.empty-hint  { color: var(--text-muted); margin-bottom: 8px; }
+.empty-title {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.empty-hint { font-size: 12px; margin-bottom: 8px; }
+
+/* ========== Dialog ========== */
+:deep(.llm-dialog .el-dialog) {
+  background: var(--bg-elev-1);
+  border: 1px solid var(--line);
+  box-shadow: var(--inset);
+}
+
+:deep(.llm-dialog .el-dialog__title) {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
 
 .preset-row {
   display: flex;
@@ -629,14 +928,16 @@ onMounted(loadList)
   padding: 10px 12px;
   margin-bottom: 14px;
   border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--bg-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-elev-2);
 }
 
 .preset-label {
-  color: var(--text-muted);
-  font-size: 12px;
   margin-right: 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: var(--text-muted);
 }
 
 .preset-chip {
@@ -644,9 +945,9 @@ onMounted(loadList)
   align-items: center;
   gap: 4px;
   padding: 3px 10px;
+  border: 1px solid var(--line);
   border-radius: 999px;
-  border: 1px solid var(--line-subtle);
-  background: var(--bg-panel);
+  background: var(--bg-elev-1);
   color: var(--text-secondary);
   font-size: 12px;
   cursor: pointer;
@@ -656,7 +957,7 @@ onMounted(loadList)
 .preset-chip:hover {
   border-color: var(--accent);
   color: var(--accent);
-  background: rgba(59, 130, 246, 0.08);
+  background: var(--accent-soft);
 }
 
 .form-grid {
@@ -668,60 +969,83 @@ onMounted(loadList)
 .span-2 { grid-column: span 2; }
 .full   { width: 100%; }
 
-/* ---- 测试连通结果对话框 ---- */
+/* ========== 测试连通结果 ========== */
 .test-result {
   display: grid;
   gap: 12px;
 }
 
-.test-summary {
+.test-banner {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border-radius: 10px;
-  font-size: 13px;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid;
+  border-left-width: 2px;
+  border-radius: var(--radius-md);
 }
 
-.test-summary.ok {
-  background: rgba(16, 185, 129, 0.10);
-  border: 1px solid rgba(16, 185, 129, 0.3);
-  color: #6EE7B7;
+.test-banner.ok {
+  background: var(--ok-soft);
+  border-color: rgba(52, 211, 153, 0.35);
+  color: var(--ok);
 }
 
-.test-summary.fail {
-  background: rgba(239, 68, 68, 0.10);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  color: #FCA5A5;
+.test-banner.fail {
+  background: var(--danger-soft);
+  border-color: rgba(248, 113, 113, 0.35);
+  color: var(--danger);
 }
 
-.test-summary strong {
+.test-banner .banner-icon {
+  background: rgba(255, 255, 255, 0.06);
+  color: inherit;
+}
+
+.banner-content {
+  display: grid;
+  gap: 2px;
+}
+
+.banner-content strong {
   color: var(--text-primary);
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 500;
 }
 
-.test-summary span {
+.banner-content .banner-meta {
+  margin-left: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
   color: var(--text-muted);
-  font-size: 12px;
 }
+
+.banner-meta .sep { color: var(--text-faint); }
 
 .reply-card,
 .error-card {
   padding: 12px 14px;
-  border-radius: 10px;
   border: 1px solid var(--line);
-  background: var(--bg-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-elev-2);
 }
 
 .error-card {
-  border-color: rgba(239, 68, 68, 0.3);
-  background: rgba(239, 68, 68, 0.05);
+  border-color: rgba(248, 113, 113, 0.3);
+  border-left: 2px solid var(--danger);
+  background: var(--danger-soft);
 }
 
 .reply-label {
   margin-bottom: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
   color: var(--text-muted);
-  font-size: 11px;
-  letter-spacing: 0.4px;
 }
 
 .reply-text {
@@ -734,11 +1058,21 @@ onMounted(loadList)
 
 .error-text {
   margin: 0;
-  color: #FCA5A5;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
+  color: var(--danger);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
   line-height: 1.6;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+/* Responsive */
+@media (max-width: 760px) {
+  .settings-v { padding: 0 14px 24px; }
+  .hero-num { font-size: 64px; }
+  .llm-card { grid-template-columns: 1fr; }
+  .card-left { border-right: 0; border-bottom: 1px solid var(--line); }
+  .form-grid { grid-template-columns: 1fr; }
+  .span-2 { grid-column: span 1; }
 }
 </style>
