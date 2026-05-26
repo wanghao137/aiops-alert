@@ -102,7 +102,7 @@ onBeforeUnmount(() => {
 
 <style>
 .aiops-alert-toast {
-  background: var(--bg-panel) !important;
-  border: 1px solid var(--line-subtle) !important;
+  background: var(--bg-elev-1) !important;
+  border: 1px solid var(--line) !important;
 }
 </style>

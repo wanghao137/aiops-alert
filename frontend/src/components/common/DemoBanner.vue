@@ -66,10 +66,9 @@ async function onClean() {
   justify-content: space-between;
   gap: 12px;
   padding: 10px 14px;
-  border: 1px solid rgba(245, 158, 11, 0.3);
-  border-radius: 10px;
-  background:
-    linear-gradient(135deg, rgba(245, 158, 11, 0.08), rgba(245, 158, 11, 0.02));
+  border: 1px solid var(--warn-soft);
+  border-radius: var(--radius-md);
+  background: var(--warn-soft);
   margin-bottom: 14px;
 }
 
@@ -84,9 +83,10 @@ async function onClean() {
   height: 28px;
   display: grid;
   place-items: center;
-  border-radius: 8px;
-  background: rgba(245, 158, 11, 0.18);
-  color: #FCD34D;
+  border-radius: var(--radius-sm);
+  background: var(--warn-soft);
+  color: var(--warn);
+  border: 1px solid rgba(251, 191, 36, 0.3);
 }
 
 .title {
@@ -121,6 +121,6 @@ async function onClean() {
 
 .close:hover {
   color: var(--text-primary);
-  border-color: var(--line-subtle);
+  border-color: var(--line-strong);
 }
 </style>

@@ -216,6 +216,7 @@ import { getObjectTypeMeta } from '@/utils/objectType'
 import { getAlertLevelMeta } from '@/utils/alertLevel'
 import { getDashboard, type DashboardData } from '@/api/dashboard'
 import { useRealtimeStore } from '@/stores/realtime'
+import { useThemeStore } from '@/stores/theme'
 
 const data = ref<DashboardData>()
 const loading = ref(false)
@@ -227,6 +228,14 @@ let statusChart: echarts.ECharts | undefined
 let levelChart: echarts.ECharts | undefined
 
 const realtime = useRealtimeStore()
+const theme = useThemeStore()
+
+/* 从 :root 上的 CSS 变量读 token，echarts 颜色随主题切换 */
+function readToken(name: string, fallback: string) {
+  if (typeof window === 'undefined') return fallback
+  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+  return v || fallback
+}
 
 // 实时时钟
 const now = ref(formatNow())
@@ -274,33 +283,45 @@ function renderCharts() {
 
 function renderTrend() {
   if (!trendRef.value || !data.value) return
-  trendChart = trendChart || echarts.init(trendRef.value, 'dark')
+  trendChart = trendChart || echarts.init(trendRef.value)
   const trend = data.value.sevenDayTrend || []
+
+  const bgElev1 = readToken('--bg-elev-1', '#0E1018')
+  const lineStrong = readToken('--line-strong', '#2A2F3F')
+  const lineCol = readToken('--line', '#1C2030')
+  const textPrimary = readToken('--text-primary', '#F4F5FB')
+  const textMuted = readToken('--text-muted', '#6E7385')
+
+  const accent = readToken('--accent', '#7DD3FC')
+  const warn = readToken('--warn', '#FBBF24')
+  const ok = readToken('--ok', '#34D399')
+  const critical = readToken('--critical', '#FB7185')
+
   trendChart.setOption({
     backgroundColor: 'transparent',
-    color: ['#7DD3FC', '#FBBF24', '#34D399', '#FB7185'],
+    color: [accent, warn, ok, critical],
     tooltip: {
       trigger: 'axis',
-      backgroundColor: '#0E1018',
-      borderColor: '#2A2F3F',
+      backgroundColor: bgElev1,
+      borderColor: lineStrong,
       borderWidth: 1,
       padding: [8, 12],
-      textStyle: { color: '#F4F5FB', fontFamily: 'JetBrains Mono', fontSize: 11 }
+      textStyle: { color: textPrimary, fontFamily: 'JetBrains Mono', fontSize: 11 }
     },
     grid: { left: 36, right: 18, top: 18, bottom: 30 },
     xAxis: {
       type: 'category',
       data: trend.map((t) => t.date.slice(5)),
       boundaryGap: false,
-      axisLine: { lineStyle: { color: '#2A2F3F' } },
+      axisLine: { lineStyle: { color: lineStrong } },
       axisTick: { show: false },
-      axisLabel: { color: '#6E7385', fontFamily: 'JetBrains Mono', fontSize: 10 }
+      axisLabel: { color: textMuted, fontFamily: 'JetBrains Mono', fontSize: 10 }
     },
     yAxis: {
       type: 'value',
       minInterval: 1,
-      splitLine: { lineStyle: { color: 'rgba(110, 115, 133, 0.08)', type: 'dashed' } },
-      axisLabel: { color: '#6E7385', fontFamily: 'JetBrains Mono', fontSize: 10 }
+      splitLine: { lineStyle: { color: lineCol, type: 'dashed' } },
+      axisLabel: { color: textMuted, fontFamily: 'JetBrains Mono', fontSize: 10 }
     },
     series: [
       {
@@ -308,8 +329,8 @@ function renderTrend() {
         lineStyle: { width: 1.6 },
         areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: 'rgba(125, 211, 252, 0.25)' },
-            { offset: 1, color: 'rgba(125, 211, 252, 0.0)' }
+            { offset: 0, color: hexToRgba(accent, 0.25) },
+            { offset: 1, color: hexToRgba(accent, 0) }
           ])
         },
         data: trend.map((t) => t.total)
@@ -321,27 +342,50 @@ function renderTrend() {
   })
 }
 
+function hexToRgba(hex: string, alpha: number) {
+  const m = hex.replace('#', '').match(/^([0-9a-f]{6})$/i)
+  if (!m) return hex
+  const r = parseInt(m[1].slice(0, 2), 16)
+  const g = parseInt(m[1].slice(2, 4), 16)
+  const b = parseInt(m[1].slice(4, 6), 16)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
 function renderRing(el: HTMLDivElement | undefined, kind: 'status' | 'level',
                     list: { code: string; name: string; value: number }[]) {
   if (!el) return
   const chart = kind === 'status'
-    ? (statusChart = statusChart || echarts.init(el, 'dark'))
-    : (levelChart = levelChart || echarts.init(el, 'dark'))
+    ? (statusChart = statusChart || echarts.init(el))
+    : (levelChart = levelChart || echarts.init(el))
+
+  const bgElev1 = readToken('--bg-elev-1', '#0E1018')
+  const lineStrong = readToken('--line-strong', '#2A2F3F')
+  const textPrimary = readToken('--text-primary', '#F4F5FB')
+  const textSecondary = readToken('--text-secondary', '#B5B9CC')
+  const textMuted = readToken('--text-muted', '#6E7385')
+
+  const accent = readToken('--accent', '#7DD3FC')
+  const warn = readToken('--warn', '#FBBF24')
+  const ok = readToken('--ok', '#34D399')
+  const critical = readToken('--critical', '#FB7185')
+  // 用 accent 衍生一个紫色系替代色，避免硬编码
+  const accentAlt = readToken('--accent', '#7DD3FC')
+
   const colors = kind === 'level'
-    ? ['#7DD3FC', '#A78BFA', '#FBBF24', '#FB7185']
-    : ['#FBBF24', '#A78BFA', '#34D399', '#6E7385']
+    ? [accent, accentAlt, warn, critical]
+    : [warn, accent, ok, textMuted]
   const total = list.reduce((s, x) => s + x.value, 0)
   chart.setOption({
     backgroundColor: 'transparent',
     color: colors,
     tooltip: {
       trigger: 'item',
-      backgroundColor: '#0E1018',
-      borderColor: '#2A2F3F',
+      backgroundColor: bgElev1,
+      borderColor: lineStrong,
       borderWidth: 1,
-      textStyle: { color: '#F4F5FB', fontFamily: 'JetBrains Mono', fontSize: 11 },
+      textStyle: { color: textPrimary, fontFamily: 'JetBrains Mono', fontSize: 11 },
       formatter: (p: { name: string; value: number; percent: number }) =>
-        `${p.name} <b style="color:#F4F5FB">${p.value}</b>　${p.percent}%`
+        `${p.name} <b style="color:${textPrimary}">${p.value}</b>　${p.percent}%`
     },
     legend: {
       orient: 'vertical',
@@ -351,7 +395,7 @@ function renderRing(el: HTMLDivElement | undefined, kind: 'status' | 'level',
       itemWidth: 6,
       itemHeight: 6,
       itemGap: 8,
-      textStyle: { color: '#B5B9CC', fontSize: 11, fontFamily: 'Noto Sans SC' },
+      textStyle: { color: textSecondary, fontSize: 11, fontFamily: 'Noto Sans SC' },
       formatter: (name: string) => {
         const it = list.find((x) => x.name === name)
         return `${name}  ${it?.value || 0}`
@@ -362,14 +406,14 @@ function renderRing(el: HTMLDivElement | undefined, kind: 'status' | 'level',
       radius: ['58%', '78%'],
       center: ['32%', '50%'],
       avoidLabelOverlap: false,
-      itemStyle: { borderColor: '#0E1018', borderWidth: 2 },
+      itemStyle: { borderColor: bgElev1, borderWidth: 2 },
       label: {
         show: true,
         position: 'center',
         formatter: () => `{n|${total}}\n{l|TOTAL}`,
         rich: {
-          n: { fontFamily: 'Space Grotesk', fontSize: 22, fontWeight: 500, color: '#F4F5FB', lineHeight: 24 },
-          l: { fontFamily: 'JetBrains Mono', fontSize: 9, color: '#6E7385', letterSpacing: 2 }
+          n: { fontFamily: 'Space Grotesk', fontSize: 22, fontWeight: 500, color: textPrimary, lineHeight: 24 },
+          l: { fontFamily: 'JetBrains Mono', fontSize: 9, color: textMuted, letterSpacing: 2 }
         }
       },
       labelLine: { show: false },
@@ -398,6 +442,13 @@ function formatNum(v?: number | null) {
 }
 
 watch(() => realtime.lastEventId, () => loadAll())
+
+/* 主题切换时重渲染 echarts，让颜色与新 token 一致 */
+watch(() => theme.isDark, () => {
+  requestAnimationFrame(() => {
+    if (data.value) renderCharts()
+  })
+})
 
 onMounted(() => {
   loadAll()

@@ -296,17 +296,18 @@ function applyReco(idx: number, r: ThresholdRecoItem) {
   display: grid;
   place-items: center;
   border-radius: 5px;
-  border: 0;
-  background: linear-gradient(135deg, rgba(59,130,246,0.2), rgba(139,92,246,0.2));
-  color: #C4B5FD;
+  border: 1px solid var(--accent-line);
+  background: var(--accent-soft);
+  color: var(--accent);
   cursor: pointer;
   transition: all 0.15s ease;
   z-index: 1;
 }
 
 .ai-helper-btn:hover {
-  background: linear-gradient(135deg, #3B82F6, #8B5CF6);
-  color: white;
+  background: var(--accent);
+  color: var(--bg-base);
+  border-color: var(--accent);
 }
 
 .threshold-wrap :deep(.el-input__wrapper) {
@@ -317,8 +318,8 @@ function applyReco(idx: number, r: ThresholdRecoItem) {
   display: grid;
   place-items: center;
   height: 32px;
-  border: 1px dashed var(--line-subtle);
-  border-radius: 6px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-sm);
   color: var(--text-muted);
   font-size: 12px;
 }
@@ -330,9 +331,9 @@ function applyReco(idx: number, r: ThresholdRecoItem) {
   justify-content: center;
   height: 30px;
   padding: 0 10px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--line);
-  background: var(--bg-subtle);
+  background: var(--bg-elev-2);
   color: var(--text-muted);
   cursor: pointer;
   font-size: 12px;
@@ -345,15 +346,15 @@ function applyReco(idx: number, r: ThresholdRecoItem) {
 }
 
 .del-btn:hover:not(:disabled) {
-  border-color: rgba(239, 68, 68, 0.4);
-  color: #FCA5A5;
-  background: rgba(239, 68, 68, 0.1);
+  border-color: var(--danger);
+  color: var(--danger);
+  background: var(--danger-soft);
 }
 
 .add-btn:hover:not(:disabled) {
   border-color: var(--accent);
   color: var(--accent);
-  background: rgba(59, 130, 246, 0.08);
+  background: var(--accent-soft);
 }
 
 .del-btn:disabled,
@@ -384,7 +385,7 @@ function applyReco(idx: number, r: ThresholdRecoItem) {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #C4B5FD;
+  color: var(--accent);
   font-weight: 600;
   font-size: 13px;
 }
@@ -404,8 +405,8 @@ function applyReco(idx: number, r: ThresholdRecoItem) {
   width: 100%;
   padding: 8px 10px;
   border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--bg-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elev-2);
   color: inherit;
   text-align: left;
   cursor: pointer;
@@ -414,7 +415,7 @@ function applyReco(idx: number, r: ThresholdRecoItem) {
 
 .reco-item:hover {
   border-color: var(--accent);
-  background: rgba(59, 130, 246, 0.08);
+  background: var(--accent-soft);
 }
 
 .reco-label {
@@ -444,8 +445,8 @@ function applyReco(idx: number, r: ThresholdRecoItem) {
   grid-template-columns: repeat(4, 1fr);
   gap: 4px;
   padding: 6px 8px;
-  border-radius: 6px;
-  background: var(--bg-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elev-2);
   font-size: 11px;
   color: var(--text-muted);
 }
