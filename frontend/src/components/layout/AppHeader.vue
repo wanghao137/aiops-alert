@@ -109,8 +109,9 @@ async function onDemoCmd(cmd: string) {
   justify-content: space-between;
   gap: 18px;
   padding: 22px 28px 18px;
-  background: linear-gradient(to bottom, rgba(7, 8, 12, 0.95), rgba(7, 8, 12, 0.85) 70%, transparent);
+  background: var(--bg-base);
   backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line);
 }
 
 .eyebrow-line {
