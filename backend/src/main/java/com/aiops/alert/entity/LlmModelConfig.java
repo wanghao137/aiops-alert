@@ -1,6 +1,7 @@
 package com.aiops.alert.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import java.math.BigDecimal;
@@ -37,9 +38,11 @@ public class LlmModelConfig {
     private String description;
 
     /** Prompt 单价（元/1k token），用于 AI 调用统计页成本估算，可空 */
+    @TableField("prompt_price_per_1k")
     private BigDecimal promptPricePer1k;
 
     /** Completion 单价（元/1k token），用于 AI 调用统计页成本估算，可空 */
+    @TableField("completion_price_per_1k")
     private BigDecimal completionPricePer1k;
 
     private LocalDateTime createdAt;

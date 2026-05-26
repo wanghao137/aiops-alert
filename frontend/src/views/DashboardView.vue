@@ -36,11 +36,11 @@
             {{ formatNum(data?.notifyFailedToday) }}
           </span>
         </div>
-        <button class="noc-btn" @click="toggleNoc" :title="nocActive ? '退出全屏 (Esc)' : '全屏大屏模式 · 30s 轮播刷新'">
-          <Tv :size="13" :stroke-width="1.6" />
-          {{ nocActive ? '退出大屏' : '大屏模式' }}
-        </button>
       </div>
+      <button class="noc-btn" @click="toggleNoc" :title="nocActive ? '退出全屏 (Esc)' : '全屏大屏模式 · 30s 轮播刷新'">
+        <Tv :size="13" :stroke-width="1.6" />
+        {{ nocActive ? '退出大屏' : '大屏模式' }}
+      </button>
     </section>
 
     <!-- ========== AI 每日态势简报 ========== -->
@@ -664,7 +664,9 @@ onBeforeUnmount(() => {
 
 /* NOC 大屏模式按钮（P2-11） */
 .noc-btn {
-  align-self: flex-end;
+  position: absolute;
+  top: 36px;
+  right: 0;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -677,6 +679,7 @@ onBeforeUnmount(() => {
   font-size: 12px;
   cursor: pointer;
   transition: all 0.15s ease;
+  z-index: 5;
 }
 
 .noc-btn:hover {
@@ -783,7 +786,7 @@ onBeforeUnmount(() => {
   margin-left: 1px;
 }
 
-@media (max-width: 1280px) {
+@media (max-width: 1199px) {
   .kpi-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .hero-right { display: none; }
 }
