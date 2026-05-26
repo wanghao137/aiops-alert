@@ -158,8 +158,10 @@ public class LlmModelConfigService {
             body.put("messages", java.util.List.of(
                     java.util.Map.of("role", "user", "content", "用 2 个字回答：你好")
             ));
-            // 思考类模型清理历史思考块
-            body.put("thinking", java.util.Map.of("clear_thinking", true));
+            // 思考类模型清理历史思考块（仅智谱端点支持，其他厂商会忽略）
+            if (config.getBaseUrl() != null && config.getBaseUrl().contains("bigmodel.cn")) {
+                body.put("thinking", java.util.Map.of("clear_thinking", true));
+            }
 
             org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
             headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
@@ -211,9 +213,40 @@ public class LlmModelConfigService {
                     .modelName(config.getModelName())
                     .build();
         } catch (org.springframework.web.client.HttpStatusCodeException e) {
+            int status = e.getStatusCode().value();
+            String hint;
+            if (status == 401 || status == 403) {
+                hint = "认证失败：API Key 无效，或套餐已到期/未授权该 baseUrl";
+            } else if (status == 404) {
+                hint = "端点不存在：检查 baseUrl 路径与模型名是否匹配（智谱 Coding Plan 用 /api/coding/paas/v4，普通用 /api/paas/v4）";
+            } else if (status == 429) {
+                hint = "限流：请稍后重试或升级套餐";
+            } else if (status >= 500) {
+                hint = "AI 服务端 5xx 错误";
+            } else {
+                hint = "HTTP " + status;
+            }
             return LlmTestResponse.builder()
                     .success(false)
-                    .error("HTTP " + e.getStatusCode().value() + ": " + e.getResponseBodyAsString())
+                    .error(hint + " | 原始响应: " + StrUtil.maxLength(e.getResponseBodyAsString(), 200))
+                    .durationMs((int) (System.currentTimeMillis() - start))
+                    .modelName(config.getModelName())
+                    .build();
+        } catch (org.springframework.web.client.ResourceAccessException e) {
+            String msg = e.getMessage() == null ? "" : e.getMessage().toLowerCase();
+            String hint;
+            if (msg.contains("connection reset")) {
+                hint = "连接被对端中断（Connection reset），可能是端点不接受此调用方式或瞬时网络抖动";
+            } else if (msg.contains("timeout") || msg.contains("timed out")) {
+                hint = "网络/读取超时";
+            } else if (msg.contains("unknownhost")) {
+                hint = "域名解析失败：检查网络代理/DNS 或 baseUrl 拼写";
+            } else {
+                hint = "网络错误";
+            }
+            return LlmTestResponse.builder()
+                    .success(false)
+                    .error(hint + ": " + StrUtil.maxLength(e.getMessage(), 200))
                     .durationMs((int) (System.currentTimeMillis() - start))
                     .modelName(config.getModelName())
                     .build();
