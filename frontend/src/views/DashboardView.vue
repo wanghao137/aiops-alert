@@ -36,8 +36,15 @@
             {{ formatNum(data?.notifyFailedToday) }}
           </span>
         </div>
+        <button class="noc-btn" @click="toggleNoc" :title="nocActive ? '退出全屏 (Esc)' : '全屏大屏模式 · 30s 轮播刷新'">
+          <Tv :size="13" :stroke-width="1.6" />
+          {{ nocActive ? '退出大屏' : '大屏模式' }}
+        </button>
       </div>
     </section>
+
+    <!-- ========== AI 每日态势简报 ========== -->
+    <DailyBriefCard />
 
     <!-- ========== KPI 双列 ========== -->
     <section class="kpi-row">
@@ -211,12 +218,13 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import dayjs from 'dayjs'
 import * as echarts from 'echarts'
-import { ArrowRight } from 'lucide-vue-next'
+import { ArrowRight, Tv } from 'lucide-vue-next'
 import { getObjectTypeMeta } from '@/utils/objectType'
 import { getAlertLevelMeta } from '@/utils/alertLevel'
 import { getDashboard, type DashboardData } from '@/api/dashboard'
 import { useRealtimeStore } from '@/stores/realtime'
 import { useThemeStore } from '@/stores/theme'
+import DailyBriefCard from '@/components/common/DailyBriefCard.vue'
 
 const data = ref<DashboardData>()
 const loading = ref(false)
@@ -450,15 +458,77 @@ watch(() => theme.isDark, () => {
   })
 })
 
+// ============================================================
+// NOC 全屏大屏模式（P2-11）
+// ============================================================
+const nocActive = ref(false)
+let nocRefreshTimer: number | undefined
+let nocRotateTimer: number | undefined
+
+function enterNoc() {
+  nocActive.value = true
+  document.documentElement.dataset.noc = '1'
+  // 浏览器全屏（用户手势中触发即可，不强制）
+  if (document.documentElement.requestFullscreen) {
+    document.documentElement.requestFullscreen().catch(() => { /* 用户拒绝时忽略 */ })
+  }
+  // 每 30s 自动 reload dashboard 数据
+  nocRefreshTimer = window.setInterval(() => {
+    loadAll()
+  }, 30_000)
+}
+
+function exitNoc() {
+  nocActive.value = false
+  delete document.documentElement.dataset.noc
+  if (document.fullscreenElement && document.exitFullscreen) {
+    document.exitFullscreen().catch(() => { /* ignore */ })
+  }
+  if (nocRefreshTimer) {
+    clearInterval(nocRefreshTimer)
+    nocRefreshTimer = undefined
+  }
+  if (nocRotateTimer) {
+    clearInterval(nocRotateTimer)
+    nocRotateTimer = undefined
+  }
+}
+
+function toggleNoc() {
+  if (nocActive.value) exitNoc()
+  else enterNoc()
+}
+
+function onKeyDown(e: KeyboardEvent) {
+  if (nocActive.value && e.key === 'Escape') {
+    exitNoc()
+  }
+}
+
+function onFullscreenChange() {
+  // 用户用 F11 / 浏览器按钮退出时同步状态
+  if (!document.fullscreenElement && nocActive.value) {
+    exitNoc()
+  }
+}
+
 onMounted(() => {
   loadAll()
   timer = window.setInterval(() => { now.value = formatNow() }, 30_000)
   window.addEventListener('resize', resize)
+  window.addEventListener('keydown', onKeyDown)
+  document.addEventListener('fullscreenchange', onFullscreenChange)
 })
 
 onBeforeUnmount(() => {
   if (timer) clearInterval(timer)
   window.removeEventListener('resize', resize)
+  window.removeEventListener('keydown', onKeyDown)
+  document.removeEventListener('fullscreenchange', onFullscreenChange)
+  if (nocRefreshTimer) clearInterval(nocRefreshTimer)
+  if (nocRotateTimer) clearInterval(nocRotateTimer)
+  // 离开 dashboard 时如果还在 NOC 模式，清理 html dataset，避免影响其它页面
+  delete document.documentElement.dataset.noc
   trendChart?.dispose()
   statusChart?.dispose()
   levelChart?.dispose()
@@ -590,6 +660,28 @@ onBeforeUnmount(() => {
   border-radius: 50%;
   background: var(--ok);
   animation: pulse-soft 2.4s ease-in-out infinite;
+}
+
+/* NOC 大屏模式按钮（P2-11） */
+.noc-btn {
+  align-self: flex-end;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: 1px solid var(--accent-line);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.noc-btn:hover {
+  background: var(--accent);
+  color: var(--bg-base);
 }
 
 /* ========== KPI ========== */

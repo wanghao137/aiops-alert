@@ -255,3 +255,67 @@ body {
   0%   { background-position: 0% 50%; }
   100% { background-position: 200% 50%; }
 }
+
+
+/* =============================================================
+   NOC 大屏模式 (P2-11)
+   - 入口：DashboardView 顶部"大屏模式"按钮 → html[data-noc="1"]
+   - 隐藏侧栏 / header / NetworkBanner，全屏聚焦 dashboard 内容
+   - 30 秒自动 reload 数据（在 DashboardView 里 setInterval 触发）
+============================================================= */
+:root[data-noc='1'] {
+  /* 用更深的背景做大屏对比 */
+  --bg-base: var(--bg-base);
+}
+
+:root[data-noc='1'] .sidebar,
+:root[data-noc='1'] .app-header,
+:root[data-noc='1'] .net-banner,
+:root[data-noc='1'] .demo-banner {
+  display: none !important;
+}
+
+:root[data-noc='1'] .app-shell {
+  grid-template-columns: 1fr !important;
+}
+
+:root[data-noc='1'] .app-content {
+  padding: 0;
+}
+
+/* 大屏模式下的 NOC pulse 装饰 */
+:root[data-noc='1'] body::before {
+  content: 'NOC · LIVE';
+  position: fixed;
+  top: 14px;
+  right: 24px;
+  z-index: 50;
+  padding: 4px 10px;
+  border: 1px solid var(--accent-line);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  pointer-events: none;
+  animation: pulse-soft 2.4s ease-in-out infinite;
+}
+
+:root[data-noc='1'] body::after {
+  content: '按 ESC 退出大屏';
+  position: fixed;
+  bottom: 14px;
+  right: 24px;
+  z-index: 50;
+  padding: 4px 10px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 999px;
+  background: var(--bg-elev-1);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  pointer-events: none;
+}
