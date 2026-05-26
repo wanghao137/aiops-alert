@@ -21,7 +21,7 @@ const routes: RouteRecordRaw[] = [
     path: '/incidents',
     name: 'incidents',
     component: () => import('@/views/IncidentsView.vue'),
-    meta: { title: 'Incident', icon: 'Flame' }
+    meta: { title: '故障组', icon: 'Flame' }
   },
   {
     path: '/rules',
@@ -58,7 +58,7 @@ const routes: RouteRecordRaw[] = [
     name: 'not-found',
     component: () => import('@/views/ErrorPage.vue'),
     props: { variant: '404' },
-    meta: { title: '页面未找到' }
+    meta: { title: '页面未找到', hideInSidebar: true }
   }
 ]
 

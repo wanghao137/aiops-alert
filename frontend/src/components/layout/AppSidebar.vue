@@ -64,7 +64,7 @@ const emit = defineEmits<{ (e: 'open-command'): void }>()
 const router = useRouter()
 const items = computed(() =>
   router.options.routes
-    .filter((r) => r.meta?.title)
+    .filter((r) => r.meta?.title && !r.meta?.hideInSidebar)
     .map((r) => ({
       path: r.path,
       title: r.meta?.title as string,
