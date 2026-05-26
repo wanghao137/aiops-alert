@@ -1,52 +1,91 @@
 <template>
-  <div class="channels-view">
-    <PageHeader
-      eyebrow="ALERT CHANNELS"
-      title="通知渠道管理"
-      subtitle="配置企业微信、邮件、短信三类通知渠道，支持随时测试连通性。规则触发告警时按渠道分发，全部留痕。"
-    >
-      <template #actions>
-        <el-button :icon="RefreshIcon" @click="loadAll">刷新</el-button>
-        <el-button type="primary" :icon="PlusIcon" @click="openCreate">新增渠道</el-button>
-      </template>
-    </PageHeader>
+  <div class="channels-v">
+    <!-- ========== HERO ========== -->
+    <section class="hero">
+      <div class="hero-left">
+        <div class="hero-eyebrow">
+          <span class="eyebrow">ALERT CHANNELS</span>
+          <span class="dot-anim" />
+          <span class="hero-time">企业微信 · 邮件 · 短信</span>
+        </div>
+        <div class="hero-headline">
+          <span class="hero-num">{{ stats?.total ?? 0 }}</span>
+          <div class="hero-words">
+            <div class="hero-line-1">{{ (stats?.total ?? 0) > 0 ? '条通知通道随时待命' : '尚未配置任何渠道' }}</div>
+            <div class="hero-line-2">
+              启用 {{ stats?.enabled ?? 0 }} · 今日成功 {{ stats?.sentToday ?? 0 }} · 今日失败 {{ stats?.failedToday ?? 0 }}
+            </div>
+          </div>
+        </div>
+      </div>
 
-    <!-- 顶部统计卡 -->
-    <section class="stat-row">
-      <StatCard label="渠道总数" :value="stats?.total ?? 0" :icon="InboxIcon" accent="#3B82F6"
-        :hint="`其中 ${stats?.enabled ?? 0} 个启用`" />
-      <StatCard label="今日发送成功" :value="stats?.sentToday ?? 0" :icon="CheckIcon" accent="#10B981"
-        hint="所有通道累计" />
-      <StatCard label="今日发送失败" :value="stats?.failedToday ?? 0" :icon="AlertIcon" accent="#EF4444"
-        hint="可在事件详情重发" />
-      <StatCard
-        v-for="t in stats?.byType ?? []"
-        :key="t.channelType"
-        :label="t.channelTypeName"
-        :value="t.total"
-        :icon="getChannelTypeMeta(t.channelType).icon"
-        :accent="getChannelTypeMeta(t.channelType).color"
-        :hint="`启用 ${t.enabled}`"
-      />
+      <div class="hero-right">
+        <button class="hero-action ghost" @click="loadAll">
+          <RefreshIcon :size="13" :stroke-width="1.6" /> 刷新
+        </button>
+        <button class="hero-action primary" @click="openCreate">
+          <PlusIcon :size="13" :stroke-width="1.6" /> 新增渠道
+        </button>
+      </div>
     </section>
 
-    <!-- 筛选条 -->
+    <!-- ========== 发送统计带 ========== -->
+    <section class="stat-bar">
+      <article class="stat-cell">
+        <div class="stat-head">
+          <span class="eyebrow inline">TOTAL CHANNELS</span>
+        </div>
+        <div class="stat-num tabular-nums">{{ stats?.total ?? 0 }}</div>
+        <div class="stat-meta">启用 {{ stats?.enabled ?? 0 }} · 停用 {{ (stats?.total ?? 0) - (stats?.enabled ?? 0) }}</div>
+      </article>
+      <article class="stat-cell ok">
+        <div class="stat-head">
+          <span class="eyebrow inline">DELIVERED · TODAY</span>
+          <CheckIcon :size="13" :stroke-width="1.7" />
+        </div>
+        <div class="stat-num tabular-nums">{{ stats?.sentToday ?? 0 }}</div>
+        <div class="stat-meta">所有通道累计</div>
+      </article>
+      <article class="stat-cell danger">
+        <div class="stat-head">
+          <span class="eyebrow inline">FAILED · TODAY</span>
+          <AlertIcon :size="13" :stroke-width="1.7" />
+        </div>
+        <div class="stat-num tabular-nums">{{ stats?.failedToday ?? 0 }}</div>
+        <div class="stat-meta">可在事件详情重发</div>
+      </article>
+      <article
+        v-for="t in stats?.byType ?? []"
+        :key="t.channelType"
+        class="stat-cell type"
+        :class="{ active: filters.channelType === t.channelType }"
+        @click="setType(filters.channelType === t.channelType ? '' : t.channelType)"
+      >
+        <div class="stat-head">
+          <span class="eyebrow inline">{{ t.channelTypeName }}</span>
+          <span class="type-dot" :style="{ background: getChannelTypeMeta(t.channelType).color }" />
+        </div>
+        <div class="stat-num tabular-nums">{{ t.total }}</div>
+        <div class="stat-meta">启用 {{ t.enabled }}</div>
+      </article>
+    </section>
+
+    <!-- ========== Toolbar ========== -->
     <section class="toolbar">
-      <div class="type-tabs">
-        <button class="type-tab" :class="{ active: !filters.channelType }" @click="setType('')">
-          全部 <em>{{ stats?.total ?? 0 }}</em>
+      <div class="seg">
+        <button class="seg-item" :class="{ active: !filters.channelType }" @click="setType('')">
+          全部 <em class="tabular-nums">{{ stats?.total ?? 0 }}</em>
         </button>
         <button
           v-for="t in CHANNEL_TYPES"
           :key="t.value"
-          class="type-tab"
+          class="seg-item"
           :class="{ active: filters.channelType === t.value }"
-          :style="filters.channelType === t.value ? { borderColor: t.color, color: t.color } : {}"
           @click="setType(t.value)"
         >
-          <component :is="t.icon" :size="14" />
+          <component :is="t.icon" :size="12" :stroke-width="1.7" />
           {{ t.short }}
-          <em>{{ countOf(t.value) }}</em>
+          <em class="tabular-nums">{{ countOf(t.value) }}</em>
         </button>
       </div>
 
@@ -64,95 +103,103 @@
           @keyup.enter="loadList"
           @clear="loadList"
         >
-          <template #prefix><SearchIcon :size="14" /></template>
+          <template #prefix><SearchIcon :size="13" :stroke-width="1.7" /></template>
         </el-input>
       </div>
     </section>
 
-    <!-- 列表 -->
-    <section v-loading="loading" class="card-grid"
+    <!-- ========== Channel Grid ========== -->
+    <section v-loading="loading" class="channel-grid"
       :style="{ minHeight: list.length ? 'auto' : '240px' }">
       <article
         v-for="item in list"
         :key="item.id"
         class="channel-card"
-        :style="{ background: getChannelTypeMeta(item.channelType).gradient }"
+        :class="{ disabled: item.status === 'DISABLED' }"
       >
-        <header class="head">
-          <div class="icon" :style="{ background: rgba(getChannelTypeMeta(item.channelType).color, 0.18), color: getChannelTypeMeta(item.channelType).color }">
-            <component :is="getChannelTypeMeta(item.channelType).icon" :size="18" />
+        <span class="type-strip" :style="{ background: getChannelTypeMeta(item.channelType).color }" />
+
+        <header class="card-head">
+          <div class="channel-icon" :style="{
+            color: getChannelTypeMeta(item.channelType).color,
+            background: hexToRgba(getChannelTypeMeta(item.channelType).color, 0.1),
+            boxShadow: `0 0 0 1px ${hexToRgba(getChannelTypeMeta(item.channelType).color, 0.25)}, 0 0 28px -6px ${hexToRgba(getChannelTypeMeta(item.channelType).color, 0.5)}`
+          }">
+            <component :is="getChannelTypeMeta(item.channelType).icon" :size="18" :stroke-width="1.6" />
           </div>
-          <div class="meta">
-            <div class="name" :title="item.channelName">{{ item.channelName }}</div>
-            <div class="code">{{ item.channelCode }}</div>
+          <div class="head-meta">
+            <div class="channel-name" :title="item.channelName">{{ item.channelName }}</div>
+            <div class="sub-row">
+              <span class="channel-code">{{ item.channelCode }}</span>
+              <span class="sep">·</span>
+              <span class="type-label">{{ item.channelTypeName }}</span>
+            </div>
           </div>
-          <span class="status-pill" :class="item.status === 'ENABLED' ? 'on' : 'off'">
-            <span class="dot" />
-            {{ item.status === 'ENABLED' ? '启用' : '停用' }}
+          <span :class="['st-pill', item.status === 'ENABLED' ? 'on' : 'off']">
+            <span class="st-dot" />{{ item.status === 'ENABLED' ? '启用' : '停用' }}
           </span>
         </header>
 
-        <div class="row">
-          <span class="lbl">类型</span>
-          <span>{{ item.channelTypeName }}</span>
-        </div>
-        <div class="row">
+        <div class="info-row">
           <span class="lbl">服务商</span>
-          <span>{{ item.providerName || '-' }}</span>
+          <span class="val">{{ item.providerName || '—' }}</span>
         </div>
-        <div class="row">
+        <div class="info-row">
           <span class="lbl">优先级</span>
-          <span>{{ item.priority ?? 100 }}</span>
+          <span class="val tabular-nums">{{ item.priority ?? 100 }}</span>
         </div>
 
-        <div class="last-line">
-          <span class="lbl">最近发送</span>
-          <span class="last-status" :class="lastClass(item.lastSendStatus)">
-            <span class="dot small" />
-            {{ lastText(item) }}
-          </span>
+        <div class="last-send" :class="lastClass(item.lastSendStatus)">
+          <span class="ls-mark">▸</span>
+          <span class="ls-label">LAST</span>
+          <span class="ls-text">{{ lastText(item) }}</span>
         </div>
+
         <p v-if="item.description" class="desc" :title="item.description">{{ item.description }}</p>
 
-        <footer class="actions">
-          <el-button text @click="openTest(item)">
-            <ZapIcon :size="14" />&nbsp;测试
-          </el-button>
-          <el-button text @click="openEdit(item)">
-            <EditIcon :size="14" />&nbsp;编辑
-          </el-button>
-          <el-button text @click="onToggle(item)">
-            <PowerIcon :size="14" />&nbsp;{{ item.status === 'ENABLED' ? '停用' : '启用' }}
-          </el-button>
+        <footer class="card-actions">
+          <button class="act-btn primary" @click="openTest(item)">
+            <ZapIcon :size="13" :stroke-width="1.7" />测试
+          </button>
+          <button class="act-btn" @click="openEdit(item)">
+            <EditIcon :size="13" :stroke-width="1.7" />编辑
+          </button>
+          <button class="act-btn" @click="onToggle(item)">
+            <PowerIcon :size="13" :stroke-width="1.7" />{{ item.status === 'ENABLED' ? '停用' : '启用' }}
+          </button>
           <el-popconfirm title="确认删除该渠道？" confirm-button-text="删除" cancel-button-text="取消"
             @confirm="onDelete(item)">
             <template #reference>
-              <el-button text type="danger">
-                <TrashIcon :size="14" />&nbsp;删除
-              </el-button>
+              <button class="act-btn danger">
+                <TrashIcon :size="13" :stroke-width="1.7" />删除
+              </button>
             </template>
           </el-popconfirm>
         </footer>
       </article>
 
       <div v-if="!loading && list.length === 0" class="empty">
-        <div class="empty-icon"><InboxIcon :size="36" /></div>
+        <InboxIcon :size="28" :stroke-width="1.4" />
         <div class="empty-title">暂无通知渠道</div>
         <div class="empty-hint">先添加一个企业微信或邮件渠道，规则触发后才能发出告警。</div>
-        <el-button type="primary" :icon="PlusIcon" @click="openCreate">新增渠道</el-button>
+        <button class="hero-action primary" @click="openCreate">
+          <PlusIcon :size="13" :stroke-width="1.7" /> 新增渠道
+        </button>
       </div>
     </section>
 
-    <!-- 编辑对话框 -->
+    <!-- ========== 编辑对话框 ========== -->
     <el-dialog
       v-model="dialogVisible"
       :title="form.id ? '编辑通知渠道' : '新增通知渠道'"
       width="680px"
       :close-on-click-modal="false"
+      class="channel-dialog"
     >
       <el-form ref="formRef" :model="form" :rules="rules" label-position="top">
+        <div class="section-title"><span class="num">01</span>基础信息</div>
         <div class="form-grid">
-          <el-form-item label="渠道名称" prop="channelName" class="span-2">
+          <el-form-item label="渠道名称" prop="channelName" class="span-3">
             <el-input v-model="form.channelName" placeholder="例如：DBA 值班企微群" />
           </el-form-item>
           <el-form-item label="渠道类型" prop="channelType">
@@ -168,11 +215,11 @@
           <el-form-item label="渠道编码">
             <el-input v-model="form.channelCode" placeholder="留空自动生成" />
           </el-form-item>
-          <el-form-item label="服务商">
-            <el-input v-model="form.providerName" placeholder="选填，例如：腾讯企业邮 / 阿里云" />
-          </el-form-item>
           <el-form-item label="优先级">
             <el-input-number v-model="form.priority" :min="1" :max="999" controls-position="right" class="full" />
+          </el-form-item>
+          <el-form-item label="服务商">
+            <el-input v-model="form.providerName" placeholder="选填，例如：腾讯企业邮 / 阿里云" />
           </el-form-item>
           <el-form-item label="状态" class="span-2">
             <el-radio-group v-model="form.status">
@@ -180,41 +227,49 @@
               <el-radio-button label="DISABLED">停用</el-radio-button>
             </el-radio-group>
           </el-form-item>
-
-          <el-form-item label="渠道配置 (JSON)" class="span-2">
-            <div class="config-hint">
-              <Lightbulb :size="14" />
-              <span>{{ getChannelTypeMeta(form.channelType).configHint }}</span>
-            </div>
-            <el-input
-              v-model="form.configJson"
-              type="textarea"
-              :rows="9"
-              :placeholder="getChannelTypeMeta(form.channelType).configPlaceholder"
-              class="config-json"
-            />
-          </el-form-item>
-
-          <el-form-item label="描述" class="span-2">
-            <el-input v-model="form.description" type="textarea" :rows="2" maxlength="500" show-word-limit />
-          </el-form-item>
         </div>
+
+        <div class="section-title"><span class="num">02</span>渠道配置</div>
+        <div class="config-hint">
+          <Lightbulb :size="13" :stroke-width="1.7" />
+          <span>{{ getChannelTypeMeta(form.channelType).configHint }}</span>
+        </div>
+        <el-input
+          v-model="form.configJson"
+          type="textarea"
+          :rows="9"
+          :placeholder="getChannelTypeMeta(form.channelType).configPlaceholder"
+          class="config-json"
+        />
+
+        <div class="section-title"><span class="num">03</span>描述</div>
+        <el-input v-model="form.description" type="textarea" :rows="2" maxlength="500" show-word-limit
+          placeholder="选填" />
       </el-form>
+
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
         <el-button type="primary" :loading="submitting" @click="onSubmit">保存</el-button>
       </template>
     </el-dialog>
 
-    <!-- 测试对话框 -->
-    <el-dialog v-model="testDialogVisible" title="渠道测试" width="560px">
+    <!-- ========== 测试对话框 ========== -->
+    <el-dialog v-model="testDialogVisible" title="渠道测试" width="560px" class="channel-dialog">
       <div v-if="testTargetMeta" class="test-target">
-        <div class="icon" :style="{ background: rgba(testTargetMeta.color, 0.18), color: testTargetMeta.color }">
-          <component :is="testTargetMeta.icon" :size="16" />
+        <div class="channel-icon" :style="{
+          color: testTargetMeta.color,
+          background: hexToRgba(testTargetMeta.color, 0.1),
+          boxShadow: `0 0 0 1px ${hexToRgba(testTargetMeta.color, 0.25)}`
+        }">
+          <component :is="testTargetMeta.icon" :size="16" :stroke-width="1.6" />
         </div>
-        <div>
-          <div class="name">{{ testTarget?.channelName }}</div>
-          <div class="code">{{ testTarget?.channelTypeName }} · {{ testTarget?.channelCode }}</div>
+        <div class="test-target-meta">
+          <div class="channel-name">{{ testTarget?.channelName }}</div>
+          <div class="sub-row">
+            <span class="type-label">{{ testTarget?.channelTypeName }}</span>
+            <span class="sep">·</span>
+            <span class="channel-code">{{ testTarget?.channelCode }}</span>
+          </div>
         </div>
       </div>
 
@@ -232,8 +287,8 @@
       </el-form>
 
       <div v-if="lastTest" class="test-result" :class="lastTest.sendStatus === 'SUCCESS' ? 'ok' : 'fail'">
-        <component :is="lastTest.sendStatus === 'SUCCESS' ? CheckIcon : AlertIcon" :size="16" />
-        <span>
+        <component :is="lastTest.sendStatus === 'SUCCESS' ? CheckIcon : AlertIcon" :size="14" :stroke-width="1.8" />
+        <span class="r-text">
           {{ lastTest.sendStatus === 'SUCCESS' ? '测试发送成功' : '测试失败' }}
           <span v-if="lastTest.failureReason" class="reason">· {{ lastTest.failureReason }}</span>
           <span v-if="lastTest.providerMsgId" class="msgid">· msgId: {{ lastTest.providerMsgId }}</span>
@@ -264,8 +319,6 @@ import {
   AlertTriangle as AlertIcon,
   Lightbulb
 } from 'lucide-vue-next'
-import StatCard from '@/components/common/StatCard.vue'
-import PageHeader from '@/components/common/PageHeader.vue'
 import { CHANNEL_TYPES, getChannelTypeMeta } from '@/utils/channelType'
 import {
   deleteAlertChannel,
@@ -356,7 +409,6 @@ function openEdit(item: AlertChannelItem) {
 }
 
 function onTypeChange() {
-  // 切换类型后，如果配置为空，自动填充示例占位符为引导
   if (!form.configJson) {
     form.configJson = getChannelTypeMeta(form.channelType).configPlaceholder
   }
@@ -366,7 +418,6 @@ async function onSubmit() {
   if (!formRef.value) return
   const valid = await formRef.value.validate().catch(() => false)
   if (!valid) return
-  // 提前校验 JSON 合法
   if (form.configJson?.trim()) {
     try {
       JSON.parse(form.configJson)
@@ -443,7 +494,7 @@ function lastText(item: AlertChannelItem) {
   return item.lastSendStatus
 }
 
-function rgba(hex: string, alpha: number) {
+function hexToRgba(hex: string, alpha: number) {
   const m = hex.replace('#', '').match(/.{1,2}/g)
   if (!m) return hex
   const [r, g, b] = m.map((x) => parseInt(x, 16))
@@ -453,228 +504,449 @@ function rgba(hex: string, alpha: number) {
 onMounted(loadAll)
 </script>
 
+
 <style scoped>
-.channels-view {
+.channels-v {
   display: grid;
-  gap: 16px;
+  gap: 22px;
+  padding: 0 28px 32px;
+  animation: fade-up 0.35s ease both;
 }
 
-.stat-row {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 12px;
-}
-
-@media (max-width: 1380px) {
-  .stat-row {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 760px) {
-  .stat-row {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-.toolbar {
+/* ========== HERO ========== */
+.hero {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
+  gap: 32px;
+  padding: 28px 0;
+  border-bottom: 1px solid var(--line);
+  position: relative;
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 80px;
+  height: 1px;
+  background: var(--accent);
+}
+
+.hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
   gap: 12px;
-  padding: 12px 16px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--bg-panel);
-  flex-wrap: wrap;
+  margin-bottom: 18px;
 }
 
-.type-tabs {
+.dot-anim {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ok);
+  animation: pulse-soft 2.4s ease-in-out infinite;
+}
+
+.hero-time {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: var(--text-muted);
+}
+
+.hero-headline {
   display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 28px;
 }
 
-.type-tab {
+.hero-num {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 84px;
+  letter-spacing: -0.05em;
+  line-height: 0.85;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.hero-words { padding-bottom: 6px; }
+
+.hero-line-1 {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.hero-line-2 {
+  margin-top: 6px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+}
+
+.hero-right {
+  display: inline-flex;
+  gap: 10px;
+}
+
+.hero-action {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
-  border: 1px solid var(--line);
+  padding: 8px 14px;
+  border: 1px solid var(--line-strong);
   border-radius: 999px;
-  background: transparent;
+  background: var(--bg-elev-1);
   color: var(--text-secondary);
+  font-family: var(--font-sans);
   font-size: 12px;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
-.type-tab:hover {
-  color: var(--text-primary);
-  border-color: var(--line-subtle);
-}
-
-.type-tab.active {
-  border-color: var(--accent);
+.hero-action.ghost:hover {
+  border-color: var(--accent-line);
   color: var(--accent);
-  background: rgba(59, 130, 246, 0.08);
 }
 
-.type-tab em {
-  padding: 1px 7px;
-  border-radius: 999px;
-  background: var(--bg-subtle);
-  color: var(--text-muted);
-  font-style: normal;
-  font-size: 11px;
+.hero-action.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg-base);
+  font-weight: 500;
 }
 
-.filter-row {
+.hero-action.primary:hover { filter: brightness(1.08); }
+
+/* ========== Stat bar ========== */
+.stat-bar {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.stat-cell {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--bg-elev-1);
+  box-shadow: var(--inset);
+  transition: all 0.15s ease;
+}
+
+.stat-cell.type {
+  cursor: pointer;
+}
+
+.stat-cell.type:hover {
+  border-color: var(--line-strong);
+  transform: translateY(-2px);
+}
+
+.stat-cell.type.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.stat-head {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
 }
 
-.filter-select {
-  width: 130px;
+.eyebrow.inline {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.18em;
 }
 
-.filter-input {
-  width: 260px;
+.eyebrow.inline::before {
+  display: none;
 }
 
-.card-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+.stat-cell.ok .eyebrow { color: var(--ok); }
+.stat-cell.danger .eyebrow { color: var(--danger); }
+
+.stat-cell.ok :deep(svg) { color: var(--ok); }
+.stat-cell.danger :deep(svg) { color: var(--danger); }
+
+.type-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.stat-num {
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 500;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: var(--text-primary);
+}
+
+.stat-cell.ok .stat-num { color: var(--ok); }
+.stat-cell.danger .stat-num { color: var(--danger); }
+
+.stat-meta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+/* ========== Toolbar ========== */
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 14px;
+  flex-wrap: wrap;
+}
+
+.seg {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--bg-elev-1);
+}
+
+.seg-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.seg-item:hover { color: var(--text-primary); }
+
+.seg-item.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.seg-item em {
+  margin-left: 2px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--bg-elev-3);
+  color: var(--text-secondary);
+  font-style: normal;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+.seg-item.active em {
+  background: var(--accent);
+  color: var(--bg-base);
+}
+
+.filter-row { display: flex; gap: 8px; }
+.filter-select { width: 130px; }
+.filter-input { width: 260px; }
+
+/* ========== Channel grid ========== */
+.channel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 14px;
+  position: relative;
 }
 
 .channel-card {
+  position: relative;
   display: grid;
   gap: 10px;
-  padding: 16px;
+  padding: 18px 18px 14px 22px;
   border: 1px solid var(--line);
-  border-radius: 12px;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  border-radius: var(--radius-md);
+  background: var(--bg-elev-1);
+  box-shadow: var(--inset);
+  overflow: hidden;
+  transition: transform 0.15s ease, border-color 0.15s ease;
 }
 
 .channel-card:hover {
   transform: translateY(-2px);
-  border-color: var(--line-subtle);
-  box-shadow: 0 16px 30px -20px rgba(0, 0, 0, 0.6);
+  border-color: var(--line-strong);
 }
 
-.head {
+.channel-card.disabled { opacity: 0.55; }
+
+.type-strip {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3px;
+}
+
+.card-head {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
-.icon {
-  width: 36px;
-  height: 36px;
+.channel-icon {
+  width: 40px;
+  height: 40px;
   display: grid;
   place-items: center;
-  border-radius: 9px;
+  border-radius: var(--radius-md);
   flex-shrink: 0;
+  transition: all 0.2s ease;
 }
 
-.meta {
-  flex: 1;
-  min-width: 0;
+.channel-card:hover .channel-icon {
+  transform: scale(1.04);
 }
 
-.name {
+.head-meta { flex: 1; min-width: 0; display: grid; gap: 3px; }
+
+.channel-name {
+  font-family: var(--font-display);
+  font-size: 15.5px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
   color: var(--text-primary);
-  font-weight: 600;
-  font-size: 14px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.code {
-  color: var(--text-muted);
-  font-family: 'JetBrains Mono', monospace;
+.sub-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
   font-size: 11px;
-  margin-top: 2px;
+  color: var(--text-muted);
 }
 
-.status-pill {
+.channel-code { color: var(--text-secondary); }
+.sep { color: var(--text-faint); }
+.type-label { color: var(--text-muted); }
+
+.st-pill {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 2px 9px;
+  padding: 2px 8px;
   border-radius: 999px;
-  font-size: 11px;
-  border: 1px solid transparent;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
 }
 
-.status-pill.on {
-  background: rgba(16, 185, 129, 0.12);
-  color: #6EE7B7;
-  border-color: rgba(16, 185, 129, 0.3);
-}
+.st-pill.on  { background: var(--ok-soft); color: var(--ok); }
+.st-pill.off { background: var(--bg-elev-3); color: var(--text-muted); }
 
-.status-pill.off {
-  background: rgba(148, 163, 184, 0.12);
-  color: #94A3B8;
-  border-color: rgba(148, 163, 184, 0.3);
-}
-
-.status-pill .dot {
-  width: 6px;
-  height: 6px;
+.st-dot {
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   background: currentColor;
 }
 
-.row {
+.st-pill.on .st-dot {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+
+/* Info row */
+.info-row {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 10px;
   font-size: 12px;
-  color: var(--text-secondary);
 }
 
 .lbl {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
   color: var(--text-muted);
 }
 
-.last-line {
+.val {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* Last send */
+.last-send {
   display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 8px 0;
-  border-top: 1px dashed var(--line);
-  border-bottom: 1px dashed var(--line);
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.last-status {
-  display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 8px;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--text-faint);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elev-2);
+  font-family: var(--font-mono);
+  font-size: 11px;
 }
 
-.last-status.ok {
-  color: #6EE7B7;
+.last-send.ok {
+  border-left-color: var(--ok);
 }
 
-.last-status.fail {
-  color: #FCA5A5;
+.last-send.fail {
+  border-left-color: var(--danger);
+  background: var(--danger-soft);
 }
 
-.last-status.idle {
+.last-send.idle { opacity: 0.7; }
+
+.ls-mark {
+  color: var(--text-faint);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.last-send.ok .ls-mark { color: var(--ok); }
+.last-send.fail .ls-mark { color: var(--danger); }
+
+.ls-label {
   color: var(--text-muted);
+  letter-spacing: 0.18em;
+  font-size: 9.5px;
 }
 
-.dot.small {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
+.ls-text {
+  flex: 1;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+
+.last-send.ok .ls-text { color: var(--ok); }
+.last-send.fail .ls-text { color: var(--danger); }
 
 .desc {
   margin: 0;
@@ -687,43 +959,114 @@ onMounted(loadAll)
   overflow: hidden;
 }
 
-.actions {
+.card-actions {
   display: flex;
   gap: 4px;
-  margin-top: auto;
-  padding-top: 6px;
+  margin-top: 2px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
 }
 
+.act-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.act-btn:hover {
+  background: var(--bg-elev-2);
+  color: var(--text-primary);
+}
+
+.act-btn.primary {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.act-btn.primary:hover {
+  background: var(--accent);
+  color: var(--bg-base);
+}
+
+.act-btn.danger:hover {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+/* Empty */
 .empty {
   grid-column: 1 / -1;
   display: grid;
   place-items: center;
   gap: 8px;
   padding: 60px 20px;
-  border: 1px dashed var(--line-subtle);
-  border-radius: 12px;
-  text-align: center;
-}
-
-.empty-icon {
-  width: 64px;
-  height: 64px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--bg-subtle);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-md);
   color: var(--text-muted);
 }
 
 .empty-title {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 500;
   color: var(--text-primary);
-  font-size: 15px;
-  font-weight: 600;
 }
 
-.empty-hint {
-  color: var(--text-muted);
-  margin-bottom: 8px;
+.empty-hint { font-size: 12px; margin-bottom: 8px; max-width: 360px; text-align: center; }
+
+/* ========== Dialog ========== */
+:deep(.channel-dialog .el-dialog) {
+  background: var(--bg-elev-1);
+  border: 1px solid var(--line);
+  box-shadow: var(--inset);
+}
+
+:deep(.channel-dialog .el-dialog__title) {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+  font-family: var(--font-display);
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.section-title:first-child { margin-top: 0; }
+
+.section-title .num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elev-2);
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
 }
 
 .form-grid {
@@ -732,13 +1075,10 @@ onMounted(loadAll)
   gap: 0 16px;
 }
 
-.span-2 {
-  grid-column: span 3;
-}
+.span-2 { grid-column: span 2; }
+.span-3 { grid-column: span 3; }
 
-.full {
-  width: 100%;
-}
+.full { width: 100%; }
 
 .opt-row {
   display: inline-flex;
@@ -750,48 +1090,50 @@ onMounted(loadAll)
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 6px;
-  color: #93C5FD;
+  margin-bottom: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--accent-line);
+  border-left: 2px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  color: var(--accent);
   font-size: 12px;
 }
 
+/* Config JSON textarea — 用 token，不写死颜色（修复 #0F172A bug） */
 .config-json :deep(.el-textarea__inner) {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-family: var(--font-mono);
   font-size: 12px;
   line-height: 1.6;
-  background: #0F172A;
+  background: var(--bg-elev-2);
   border-color: var(--line);
+  color: var(--text-primary);
 }
 
+.config-json :deep(.el-textarea__inner:focus) {
+  border-color: var(--accent);
+}
+
+/* Test target card */
 .test-target {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px;
+  gap: 12px;
+  padding: 12px 14px;
   border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--bg-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-elev-2);
   margin-bottom: 14px;
 }
 
-.test-target .icon {
-  width: 32px;
-  height: 32px;
+.test-target .channel-icon {
+  width: 36px;
+  height: 36px;
 }
 
-.test-target .name {
-  color: var(--text-primary);
-  font-weight: 600;
-}
+.test-target-meta { display: grid; gap: 3px; }
 
-.test-target .code {
-  color: var(--text-muted);
-  font-size: 12px;
-}
-
-.test-form .el-form-item {
-  margin-bottom: 14px;
-}
+.test-form :deep(.el-form-item) { margin-bottom: 14px; }
 
 .test-result {
   display: flex;
@@ -799,25 +1141,43 @@ onMounted(loadAll)
   gap: 8px;
   margin-top: 4px;
   padding: 10px 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 13px;
+  border: 1px solid;
 }
 
 .test-result.ok {
-  background: rgba(16, 185, 129, 0.12);
-  border: 1px solid rgba(16, 185, 129, 0.3);
-  color: #6EE7B7;
+  background: var(--ok-soft);
+  border-color: rgba(52, 211, 153, 0.35);
+  color: var(--ok);
 }
 
 .test-result.fail {
-  background: rgba(239, 68, 68, 0.12);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  color: #FCA5A5;
+  background: var(--danger-soft);
+  border-color: rgba(248, 113, 113, 0.35);
+  color: var(--danger);
 }
+
+.r-text { line-height: 1.6; }
 
 .reason,
 .msgid {
   color: var(--text-muted);
   margin-left: 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+/* Responsive */
+@media (max-width: 1380px) {
+  .stat-bar { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 760px) {
+  .channels-v { padding: 0 14px 24px; }
+  .hero-num { font-size: 64px; }
+  .stat-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .form-grid { grid-template-columns: 1fr; }
+  .span-2, .span-3 { grid-column: span 1; }
 }
 </style>
