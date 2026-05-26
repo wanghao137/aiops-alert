@@ -55,7 +55,8 @@ import {
   Flame,
   Server,
   Send,
-  Settings
+  Settings,
+  Activity
 } from 'lucide-vue-next'
 
 const emit = defineEmits<{ (e: 'open-command'): void }>()
@@ -79,7 +80,7 @@ const buildId = computed(() => {
 })
 
 const iconMap: Record<string, unknown> = {
-  LayoutDashboard, BellRing, Flame, Sparkles, Server, Send, Settings
+  LayoutDashboard, BellRing, Flame, Sparkles, Server, Send, Settings, Activity
 }
 
 function iconOf(name: string) {
