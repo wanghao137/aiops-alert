@@ -1,57 +1,79 @@
 <template>
-  <div class="objects-view">
-    <PageHeader
-      eyebrow="MONITOR OBJECTS"
-      title="监控对象管理"
-      subtitle="维护服务器、数据库、同步作业、加工作业等具体实例。后续告警规则、事件、Incident 都基于这些对象触发。"
-    >
-      <template #actions>
-        <el-button :icon="RefreshIcon" @click="loadAll">刷新</el-button>
-        <el-button type="primary" :icon="PlusIcon" @click="openCreate">新增对象</el-button>
-      </template>
-    </PageHeader>
+  <div class="objects-v">
+    <!-- ========== HERO ========== -->
+    <section class="hero">
+      <div class="hero-left">
+        <div class="hero-eyebrow">
+          <span class="eyebrow">MONITOR OBJECTS</span>
+          <span class="dot-anim" />
+          <span class="hero-time">服务器 · 数据库 · 同步作业 · 加工作业</span>
+        </div>
+        <div class="hero-headline">
+          <span class="hero-num">{{ stats?.total ?? 0 }}</span>
+          <div class="hero-words">
+            <div class="hero-line-1">{{ (stats?.total ?? 0) > 0 ? '个对象在监控范围内' : '尚未注册任何对象' }}</div>
+            <div class="hero-line-2">
+              启用 {{ stats?.enabled ?? 0 }}
+              <template v-for="t in stats?.byType ?? []" :key="t.objectType">
+                · {{ t.objectTypeName }} {{ t.total }}
+              </template>
+            </div>
+          </div>
+        </div>
+      </div>
 
-    <!-- 顶部统计卡 -->
-    <section class="stat-row">
-      <StatCard
-        label="对象总数"
-        :value="stats?.total ?? 0"
-        :icon="LayersIcon"
-        accent="#3B82F6"
-        :hint="`其中 ${stats?.enabled ?? 0} 个启用`"
-      />
-      <StatCard
-        v-for="t in stats?.byType ?? []"
-        :key="t.objectType"
-        :label="t.objectTypeName"
-        :value="t.total"
-        :icon="getObjectTypeMeta(t.objectType).icon"
-        :accent="getObjectTypeMeta(t.objectType).color"
-        :hint="`启用 ${t.enabled}`"
-      />
+      <div class="hero-right">
+        <button class="hero-action ghost" @click="loadAll">
+          <RefreshIcon :size="13" :stroke-width="1.6" /> 刷新
+        </button>
+        <button class="hero-action primary" @click="openCreate">
+          <PlusIcon :size="13" :stroke-width="1.6" /> 新增对象
+        </button>
+      </div>
     </section>
 
-    <!-- 筛选条 -->
+    <!-- ========== 类型分布卡 ========== -->
+    <section v-if="stats && stats.total > 0" class="type-overview">
+      <article
+        v-for="t in OBJECT_TYPES"
+        :key="t.value"
+        class="type-cell"
+        :class="{ active: filters.objectType === t.value }"
+        @click="setType(filters.objectType === t.value ? '' : t.value)"
+      >
+        <div class="type-cell-head">
+          <span class="type-icon" :style="{ color: t.color, background: hexToRgba(t.color, 0.1), borderColor: hexToRgba(t.color, 0.3) }">
+            <component :is="t.icon" :size="14" :stroke-width="1.7" />
+          </span>
+          <span class="type-name">{{ t.label }}</span>
+        </div>
+        <div class="type-num tabular-nums">{{ countOf(t.value) }}</div>
+        <div class="type-meta tabular-nums">
+          启用 {{ countEnabledOf(t.value) }} · 占比 {{ stats.total ? Math.round(countOf(t.value) / stats.total * 100) : 0 }}%
+        </div>
+      </article>
+    </section>
+
+    <!-- ========== Toolbar ========== -->
     <section class="toolbar">
-      <div class="type-tabs">
+      <div class="seg">
         <button
-          class="type-tab"
+          class="seg-item"
           :class="{ active: !filters.objectType }"
           @click="setType('')"
         >
-          全部 <em>{{ stats?.total ?? 0 }}</em>
+          全部 <em class="tabular-nums">{{ stats?.total ?? 0 }}</em>
         </button>
         <button
           v-for="t in OBJECT_TYPES"
           :key="t.value"
-          class="type-tab"
+          class="seg-item"
           :class="{ active: filters.objectType === t.value }"
-          :style="filters.objectType === t.value ? { borderColor: t.color, color: t.color } : {}"
           @click="setType(t.value)"
         >
-          <component :is="t.icon" :size="14" />
+          <component :is="t.icon" :size="12" :stroke-width="1.7" />
           {{ t.short }}
-          <em>{{ countOf(t.value) }}</em>
+          <em class="tabular-nums">{{ countOf(t.value) }}</em>
         </button>
       </div>
 
@@ -75,54 +97,64 @@
           @clear="loadList"
         >
           <template #prefix>
-            <SearchIcon :size="14" />
+            <SearchIcon :size="13" :stroke-width="1.7" />
           </template>
         </el-input>
       </div>
     </section>
 
-    <!-- 列表（卡片网格） -->
-    <section v-loading="loading" class="card-grid" :style="{ minHeight: list.length ? 'auto' : '240px' }">
+    <!-- ========== Object Grid ========== -->
+    <section v-loading="loading" class="object-grid" :style="{ minHeight: list.length ? 'auto' : '240px' }">
       <article
         v-for="item in list"
         :key="item.id"
         class="object-card"
-        :style="{ background: getObjectTypeMeta(item.objectType).gradient }"
+        :class="{ disabled: item.status === 'DISABLED' }"
       >
-        <header class="object-card-head">
-          <div class="object-icon" :style="{ background: hexToRgba(getObjectTypeMeta(item.objectType).color, 0.18), color: getObjectTypeMeta(item.objectType).color }">
-            <component :is="getObjectTypeMeta(item.objectType).icon" :size="18" />
+        <span class="type-strip" :style="{ background: getObjectTypeMeta(item.objectType).color }" />
+
+        <header class="card-head">
+          <div class="object-icon" :style="{
+            color: getObjectTypeMeta(item.objectType).color,
+            background: hexToRgba(getObjectTypeMeta(item.objectType).color, 0.1),
+            boxShadow: `0 0 0 1px ${hexToRgba(getObjectTypeMeta(item.objectType).color, 0.25)}, 0 0 28px -6px ${hexToRgba(getObjectTypeMeta(item.objectType).color, 0.5)}`
+          }">
+            <component :is="getObjectTypeMeta(item.objectType).icon" :size="18" :stroke-width="1.6" />
           </div>
-          <div class="object-meta">
+          <div class="head-meta">
             <div class="object-name" :title="item.objectName">{{ item.objectName }}</div>
-            <div class="object-code">{{ item.objectCode }}</div>
+            <div class="sub-row">
+              <span class="object-code">{{ item.objectCode }}</span>
+              <span class="sep">·</span>
+              <span class="type-label">{{ item.objectTypeName }}</span>
+            </div>
           </div>
-          <span class="status-pill" :class="item.status === 'ENABLED' ? 'status-on' : 'status-off'">
-            <span class="status-dot" />
-            {{ item.status === 'ENABLED' ? '启用' : '停用' }}
+          <span :class="['st-pill', item.status === 'ENABLED' ? 'on' : 'off']">
+            <span class="st-dot" />{{ item.status === 'ENABLED' ? '启用' : '停用' }}
           </span>
         </header>
 
-        <div class="object-row">
-          <span class="row-label">类型</span>
-          <span>{{ item.objectTypeName }}</span>
+        <div class="info-row">
+          <span class="lbl">负责人</span>
+          <span class="val">
+            {{ item.ownerName || '—' }}
+            <small v-if="item.ownerPhone" class="muted">· {{ item.ownerPhone }}</small>
+          </span>
         </div>
-        <div class="object-row">
-          <span class="row-label">负责人</span>
-          <span>{{ item.ownerName || '-' }}<span v-if="item.ownerPhone" class="muted"> · {{ item.ownerPhone }}</span></span>
-        </div>
-        <div v-if="item.tags" class="tag-row">
+
+        <div v-if="tagList(item.tags).length" class="tag-row">
           <span v-for="tag in tagList(item.tags)" :key="tag" class="tag-chip">{{ tag }}</span>
         </div>
-        <p v-if="item.description" class="object-desc" :title="item.description">{{ item.description }}</p>
 
-        <footer class="object-actions">
-          <el-button text @click="openEdit(item)">
-            <EditIcon :size="14" />&nbsp;编辑
-          </el-button>
-          <el-button text @click="onToggle(item)">
-            <PowerIcon :size="14" />&nbsp;{{ item.status === 'ENABLED' ? '停用' : '启用' }}
-          </el-button>
+        <p v-if="item.description" class="desc" :title="item.description">{{ item.description }}</p>
+
+        <footer class="card-actions">
+          <button class="act-btn" @click="openEdit(item)">
+            <EditIcon :size="13" :stroke-width="1.7" />编辑
+          </button>
+          <button class="act-btn" @click="onToggle(item)">
+            <PowerIcon :size="13" :stroke-width="1.7" />{{ item.status === 'ENABLED' ? '停用' : '启用' }}
+          </button>
           <el-popconfirm
             title="确认删除该对象？关联的规则需要重新绑定。"
             confirm-button-text="删除"
@@ -130,9 +162,9 @@
             @confirm="onDelete(item)"
           >
             <template #reference>
-              <el-button text type="danger">
-                <TrashIcon :size="14" />&nbsp;删除
-              </el-button>
+              <button class="act-btn danger">
+                <TrashIcon :size="13" :stroke-width="1.7" />删除
+              </button>
             </template>
           </el-popconfirm>
         </footer>
@@ -140,16 +172,16 @@
 
       <!-- 空状态 -->
       <div v-if="!loading && list.length === 0" class="empty">
-        <div class="empty-icon">
-          <ServerCrashIcon :size="36" />
-        </div>
+        <ServerCrashIcon :size="28" :stroke-width="1.4" />
         <div class="empty-title">暂无监控对象</div>
-        <div class="empty-hint">点击右上角"新增对象"开始添加。</div>
-        <el-button type="primary" :icon="PlusIcon" @click="openCreate">新增对象</el-button>
+        <div class="empty-hint">点击右上角「新增对象」开始添加，对象是规则、事件、Incident 的根基。</div>
+        <button class="hero-action primary" @click="openCreate">
+          <PlusIcon :size="13" :stroke-width="1.7" /> 新增对象
+        </button>
       </div>
     </section>
 
-    <!-- 编辑对话框 -->
+    <!-- ========== 编辑对话框 ========== -->
     <el-dialog
       v-model="dialogVisible"
       :title="form.id ? '编辑监控对象' : '新增监控对象'"
@@ -158,6 +190,7 @@
       class="object-dialog"
     >
       <el-form ref="formRef" :model="form" :rules="rules" label-position="top" @submit.prevent>
+        <div class="section-title"><span class="num">01</span>基础信息</div>
         <div class="form-grid">
           <el-form-item label="对象名称" prop="objectName" class="span-2">
             <el-input v-model="form.objectName" placeholder="例如：生产 MySQL 主库" />
@@ -181,6 +214,10 @@
           <el-form-item label="联系电话">
             <el-input v-model="form.ownerPhone" placeholder="选填" />
           </el-form-item>
+        </div>
+
+        <div class="section-title"><span class="num">02</span>分组与状态</div>
+        <div class="form-grid">
           <el-form-item label="标签" class="span-2">
             <el-input v-model="form.tags" placeholder="多个标签用英文逗号分隔，如：prod,核心,7x24" />
           </el-form-item>
@@ -190,6 +227,10 @@
               <el-radio-button label="DISABLED">停用</el-radio-button>
             </el-radio-group>
           </el-form-item>
+        </div>
+
+        <div class="section-title"><span class="num">03</span>详细描述</div>
+        <div class="form-grid">
           <el-form-item label="描述" class="span-2">
             <el-input v-model="form.description" type="textarea" :rows="3" maxlength="500" show-word-limit />
           </el-form-item>
@@ -212,20 +253,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import {
   Plus as PlusIcon,
   RefreshCw as RefreshIcon,
   Search as SearchIcon,
-  Layers as LayersIcon,
   Edit3 as EditIcon,
   Power as PowerIcon,
   Trash2 as TrashIcon,
   ServerCrash as ServerCrashIcon
 } from 'lucide-vue-next'
-import StatCard from '@/components/common/StatCard.vue'
-import PageHeader from '@/components/common/PageHeader.vue'
 import { OBJECT_TYPES, getObjectTypeMeta } from '@/utils/objectType'
 import {
   deleteMonitorObject,
@@ -271,6 +309,10 @@ const rules: FormRules = {
 
 function countOf(type: string) {
   return stats.value?.byType.find((t) => t.objectType === type)?.total ?? 0
+}
+
+function countEnabledOf(type: string) {
+  return stats.value?.byType.find((t) => t.objectType === type)?.enabled ?? 0
 }
 
 async function loadList() {
@@ -353,198 +395,397 @@ function hexToRgba(hex: string, alpha: number) {
 onMounted(loadAll)
 </script>
 
+
 <style scoped>
-.objects-view {
+.objects-v {
   display: grid;
-  gap: 16px;
+  gap: 22px;
+  padding: 0 28px 32px;
+  animation: fade-up 0.35s ease both;
 }
 
-.stat-row {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 14px;
-}
-
-@media (max-width: 1280px) {
-  .stat-row {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 760px) {
-  .stat-row {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-.toolbar {
+/* ========== HERO ========== */
+.hero {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
+  gap: 32px;
+  padding: 28px 0;
+  border-bottom: 1px solid var(--line);
+  position: relative;
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 80px;
+  height: 1px;
+  background: var(--accent);
+}
+
+.hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
   gap: 12px;
-  padding: 12px 16px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--bg-panel);
-  flex-wrap: wrap;
+  margin-bottom: 18px;
 }
 
-.type-tabs {
+.dot-anim {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ok);
+  animation: pulse-soft 2.4s ease-in-out infinite;
+}
+
+.hero-time {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: var(--text-muted);
+}
+
+.hero-headline {
   display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 28px;
 }
 
-.type-tab {
+.hero-num {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 84px;
+  letter-spacing: -0.05em;
+  line-height: 0.85;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.hero-words { padding-bottom: 6px; }
+
+.hero-line-1 {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.hero-line-2 {
+  margin-top: 6px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+}
+
+.hero-right {
+  display: inline-flex;
+  gap: 10px;
+}
+
+.hero-action {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
-  border: 1px solid var(--line);
+  padding: 8px 14px;
+  border: 1px solid var(--line-strong);
   border-radius: 999px;
-  background: transparent;
+  background: var(--bg-elev-1);
   color: var(--text-secondary);
+  font-family: var(--font-sans);
   font-size: 12px;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
-.type-tab:hover {
-  color: var(--text-primary);
-  border-color: var(--line-subtle);
-}
-
-.type-tab.active {
-  border-color: var(--accent);
+.hero-action.ghost:hover {
+  border-color: var(--accent-line);
   color: var(--accent);
-  background: rgba(59, 130, 246, 0.08);
 }
 
-.type-tab em {
+.hero-action.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg-base);
+  font-weight: 500;
+}
+
+.hero-action.primary:hover { filter: brightness(1.08); }
+
+/* ========== Type overview ========== */
+.type-overview {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.type-cell {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--bg-elev-1);
+  box-shadow: var(--inset);
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.type-cell:hover {
+  border-color: var(--line-strong);
+  transform: translateY(-2px);
+}
+
+.type-cell.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.type-cell-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.type-icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  border: 1px solid;
+  flex-shrink: 0;
+}
+
+.type-name {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.type-num {
+  font-family: var(--font-display);
+  font-size: 38px;
+  font-weight: 500;
+  letter-spacing: -0.04em;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.type-meta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+/* ========== Toolbar ========== */
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.seg {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--bg-elev-1);
+}
+
+.seg-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.seg-item:hover { color: var(--text-primary); }
+
+.seg-item.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.seg-item em {
+  margin-left: 2px;
   padding: 1px 7px;
   border-radius: 999px;
-  background: var(--bg-subtle);
-  color: var(--text-muted);
+  background: var(--bg-elev-3);
+  color: var(--text-secondary);
   font-style: normal;
-  font-size: 11px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
 }
 
-.filter-row {
-  display: flex;
-  gap: 8px;
+.seg-item.active em {
+  background: var(--accent);
+  color: var(--bg-base);
 }
 
-.filter-select {
-  width: 130px;
-}
+.filter-row { display: flex; gap: 8px; }
+.filter-select { width: 130px; }
+.filter-input { width: 260px; }
 
-.filter-input {
-  width: 260px;
-}
-
-.card-grid {
+/* ========== Object grid ========== */
+.object-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
   gap: 14px;
   position: relative;
 }
 
 .object-card {
+  position: relative;
   display: grid;
   gap: 10px;
-  padding: 16px;
+  padding: 18px 18px 14px 22px;
   border: 1px solid var(--line);
-  border-radius: 12px;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  border-radius: var(--radius-md);
+  background: var(--bg-elev-1);
+  box-shadow: var(--inset);
+  overflow: hidden;
+  transition: transform 0.15s ease, border-color 0.15s ease;
 }
 
 .object-card:hover {
   transform: translateY(-2px);
-  border-color: var(--line-subtle);
-  box-shadow: 0 16px 30px -20px rgba(0, 0, 0, 0.6);
+  border-color: var(--line-strong);
 }
 
-.object-card-head {
+.object-card.disabled { opacity: 0.55; }
+
+.type-strip {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3px;
+}
+
+.card-head {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .object-icon {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   display: grid;
   place-items: center;
-  border-radius: 9px;
+  border-radius: var(--radius-md);
   flex-shrink: 0;
+  transition: all 0.2s ease;
 }
 
-.object-meta {
-  flex: 1;
-  min-width: 0;
+.object-card:hover .object-icon {
+  transform: scale(1.04);
 }
+
+.head-meta { flex: 1; min-width: 0; display: grid; gap: 3px; }
 
 .object-name {
+  font-family: var(--font-display);
+  font-size: 15.5px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
   color: var(--text-primary);
-  font-weight: 600;
-  font-size: 14px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.object-code {
-  color: var(--text-muted);
-  font-family: 'JetBrains Mono', monospace;
+.sub-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
   font-size: 11px;
-  margin-top: 2px;
+  color: var(--text-muted);
 }
 
-.status-pill {
+.object-code { color: var(--text-secondary); }
+.sep { color: var(--text-faint); }
+.type-label { color: var(--text-muted); }
+
+.st-pill {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 2px 9px;
+  padding: 2px 8px;
   border-radius: 999px;
-  font-size: 11px;
-  border: 1px solid transparent;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
 }
 
-.status-on {
-  background: rgba(16, 185, 129, 0.12);
-  color: #6EE7B7;
-  border-color: rgba(16, 185, 129, 0.3);
-}
+.st-pill.on  { background: var(--ok-soft); color: var(--ok); }
+.st-pill.off { background: var(--bg-elev-3); color: var(--text-muted); }
 
-.status-off {
-  background: rgba(148, 163, 184, 0.12);
-  color: #94A3B8;
-  border-color: rgba(148, 163, 184, 0.3);
-}
-
-.status-dot {
-  width: 6px;
-  height: 6px;
+.st-dot {
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   background: currentColor;
 }
 
-.object-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  font-size: 12px;
-  color: var(--text-secondary);
+.st-pill.on .st-dot {
+  animation: pulse-soft 2s ease-in-out infinite;
 }
 
-.row-label {
+/* Info row */
+.info-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px dashed var(--line);
+  font-size: 12px;
+}
+
+.lbl {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
   color: var(--text-muted);
+}
+
+.val {
+  color: var(--text-primary);
+  font-weight: 500;
 }
 
 .muted {
   color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
 }
 
+/* Tags */
 .tag-row {
   display: flex;
   flex-wrap: wrap;
@@ -552,15 +793,17 @@ onMounted(loadAll)
 }
 
 .tag-chip {
-  padding: 2px 8px;
-  border-radius: 6px;
-  border: 1px solid var(--line-subtle);
-  background: var(--bg-subtle);
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--bg-elev-2);
   color: var(--text-secondary);
-  font-size: 11px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
 }
 
-.object-desc {
+.desc {
   margin: 0;
   color: var(--text-muted);
   font-size: 12px;
@@ -571,44 +814,104 @@ onMounted(loadAll)
   overflow: hidden;
 }
 
-.object-actions {
+.card-actions {
   display: flex;
   gap: 4px;
-  margin-top: auto;
-  padding-top: 8px;
+  margin-top: 2px;
+  padding-top: 10px;
   border-top: 1px dashed var(--line);
 }
 
+.act-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.act-btn:hover {
+  background: var(--bg-elev-2);
+  color: var(--text-primary);
+}
+
+.act-btn.danger:hover {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+/* Empty */
 .empty {
   grid-column: 1 / -1;
   display: grid;
   place-items: center;
   gap: 8px;
   padding: 60px 20px;
-  border: 1px dashed var(--line-subtle);
-  border-radius: 12px;
-  text-align: center;
-}
-
-.empty-icon {
-  width: 64px;
-  height: 64px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--bg-subtle);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-md);
   color: var(--text-muted);
 }
 
 .empty-title {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 500;
   color: var(--text-primary);
-  font-size: 15px;
-  font-weight: 600;
 }
 
-.empty-hint {
-  color: var(--text-muted);
-  margin-bottom: 8px;
+.empty-hint { font-size: 12px; margin-bottom: 8px; max-width: 360px; text-align: center; }
+
+/* ========== Dialog ========== */
+:deep(.object-dialog .el-dialog) {
+  background: var(--bg-elev-1);
+  border: 1px solid var(--line);
+  box-shadow: var(--inset);
+}
+
+:deep(.object-dialog .el-dialog__title) {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+  font-family: var(--font-display);
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.section-title:first-child { margin-top: 0; }
+
+.section-title .num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elev-2);
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
 }
 
 .form-grid {
@@ -617,17 +920,25 @@ onMounted(loadAll)
   gap: 0 16px;
 }
 
-.span-2 {
-  grid-column: span 2;
-}
-
-.full {
-  width: 100%;
-}
+.span-2 { grid-column: span 2; }
+.full { width: 100%; }
 
 .opt-row {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+}
+
+/* Responsive */
+@media (max-width: 1280px) {
+  .type-overview { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 760px) {
+  .objects-v { padding: 0 14px 24px; }
+  .hero-num { font-size: 64px; }
+  .type-overview { grid-template-columns: 1fr; }
+  .form-grid { grid-template-columns: 1fr; }
+  .span-2 { grid-column: span 1; }
 }
 </style>
