@@ -209,6 +209,8 @@ create table if not exists llm_model_config (
   is_default   tinyint default 0 not null,
   status       varchar(16) default 'ENABLED' not null,
   description  varchar(500),
+  prompt_price_per_1k     decimal(10,4),
+  completion_price_per_1k decimal(10,4),
   created_at   timestamp default current_timestamp not null,
   updated_at   timestamp default current_timestamp not null,
   constraint uk_llm_code unique (config_code)

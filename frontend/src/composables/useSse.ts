@@ -81,5 +81,15 @@ export function useSse(handler: SseHandler) {
     connected.value = false
   })
 
-  return { connected }
+  /**
+   * 主动重连：用户点 NetworkBanner 的"重新连接"按钮时触发。
+   * 立即关闭旧 EventSource、重置 lastMessageAt 并发起新连接。
+   */
+  function reconnect() {
+    connected.value = false
+    lastMessageAt = Date.now()
+    connect()
+  }
+
+  return { connected, reconnect }
 }

@@ -255,6 +255,8 @@ create table `llm_model_config` (
   `is_default` tinyint not null default 0,
   `status` varchar(16) not null default 'ENABLED',
   `description` varchar(500) null,
+  `prompt_price_per_1k` decimal(10,4) null comment 'Prompt 单价 元/1k token',
+  `completion_price_per_1k` decimal(10,4) null comment 'Completion 单价 元/1k token',
   `created_at` datetime not null default current_timestamp,
   `updated_at` datetime not null default current_timestamp on update current_timestamp,
   primary key (`id`),

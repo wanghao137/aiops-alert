@@ -109,8 +109,9 @@
     </section>
 
     <!-- ========== Channel Grid ========== -->
-    <section v-loading="loading" class="channel-grid"
+    <section v-loading="loading && list.length > 0" class="channel-grid"
       :style="{ minHeight: list.length ? 'auto' : '240px' }">
+      <SkeletonList v-if="loading && list.length === 0" :rows="4" variant="row" />
       <article
         v-for="item in list"
         :key="item.id"
@@ -320,6 +321,7 @@ import {
   Lightbulb
 } from 'lucide-vue-next'
 import { CHANNEL_TYPES, getChannelTypeMeta } from '@/utils/channelType'
+import SkeletonList from '@/components/common/SkeletonList.vue'
 import {
   deleteAlertChannel,
   getAlertChannelStats,

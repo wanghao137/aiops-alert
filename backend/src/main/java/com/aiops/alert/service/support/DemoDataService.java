@@ -1,11 +1,15 @@
 package com.aiops.alert.service.support;
 
 import com.aiops.alert.common.Enums;
+import com.aiops.alert.common.MetricCatalog;
 import com.aiops.alert.entity.AlertChannel;
+import com.aiops.alert.entity.AlertEvent;
+import com.aiops.alert.entity.AlertIncident;
 import com.aiops.alert.entity.AlertRule;
 import com.aiops.alert.entity.AlertRuleChannelRel;
 import com.aiops.alert.entity.AlertRuleCondition;
 import com.aiops.alert.entity.AlertRuleObjectRel;
+import com.aiops.alert.entity.MetricSample;
 import com.aiops.alert.entity.MonitorObject;
 import com.aiops.alert.mapper.AlertChannelMapper;
 import com.aiops.alert.mapper.AlertEventHandleLogMapper;
@@ -19,8 +23,16 @@ import com.aiops.alert.mapper.AlertRuleObjectRelMapper;
 import com.aiops.alert.mapper.MetricSampleMapper;
 import com.aiops.alert.mapper.MonitorObjectMapper;
 import com.aiops.alert.service.core.AlertEventService;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -210,6 +222,11 @@ public class DemoDataService {
         eventService.triggerEvent(jobRule, objects.get(4), "job_status=FAILED", "源表 schema 变更导致同步失败");
         eventService.triggerEvent(procRule, objects.get(6), "job_duration=42 分钟", "上游延迟连锁反应");
 
+        // 5. 历史回填：12 条 7 天内的 AlertEvent + 7 天内 ~100 条/(object,metric) 的 MetricSample
+        //    让总览大屏 7 日趋势曲线显著、阈值推荐有真实分位数据、详情页可看到预生成 AI 摘要
+        List<AlertRule> allRules = List.of(cpuRule, memRule, dbRule, slowRule, jobRule, procRule);
+        seedHistorical(objects, allRules);
+
         return "演示数据生成完成：%d 个对象，%d 个渠道，%d 条规则，事件已触发"
                 .formatted(objects.size(), 3, 6);
     }
@@ -275,5 +292,288 @@ public class DemoDataService {
             rel.setReceiverValue(receiver);
             channelRelMapper.insert(rel);
         }
+    }
+
+    // ========================================================================
+    // 历史回填（spec: demo-readiness-and-ai-observability）
+    //
+    // 目标：
+    //  1. 总览大屏 7 日趋势图四条曲线（总量 / 待处理 / 已恢复 / 紧急）显著有曲线，不再是单日柱
+    //  2. 详情页可看到 SUCCESS 状态的预生成 AI 摘要，不需要现场调 LLM
+    //  3. 阈值推荐能基于真实分位数据返回 source=HISTORY
+    //
+    // 策略（确定性，演示效果可控）：
+    //  - 12 条 AlertEvent 分散到 day-1 ~ day-7（每天 1-3 条）
+    //  - 状态混合：4×RECOVERED + 3×CLOSED + 3×CONFIRMED + 2×PENDING（covers ≥3 状态 + ≥1 RECOVERED）
+    //  - 级别混合：4×CRITICAL + 5×SERIOUS + 3×NORMAL（covers ≥2 级别）
+    //  - 对象类型：覆盖 SERVER / DATABASE / SYNC_JOB / PROCESS_JOB 4 种
+    //  - 3 条 RECOVERED 写入 PRE_GENERATED_SUMMARIES（ai_summary_status=SUCCESS）
+    //  - 当下 6 条事件中至少 1 条保持 PENDING（用于演示现场 AI 流式生成）
+    //  - MetricSample：每个数值条件型 (object, metric) 写 7 天 100+ 条，P95 > P50
+    // ========================================================================
+
+    /** 一日内的固定时刻分布，避免随机带来的"运气演示效果"差异。 */
+    private static final LocalTime[] DAILY_SLOTS = new LocalTime[]{
+            LocalTime.of(8, 30),
+            LocalTime.of(13, 15),
+            LocalTime.of(19, 42)
+    };
+
+    /** 3 条预生成的 AI 摘要 JSON（ai_summary_status=SUCCESS），按 (规则索引) 选用。 */
+    private static final String[] PRE_GENERATED_SUMMARIES = new String[]{
+            // 第 0 条：MySQL 主从延迟
+            """
+            {
+              "what": "生产 MySQL 主库主从延迟超过 5 分钟，连续 3 次命中阈值",
+              "impact": "读写分离场景下从库查询返回旧数据，订单查询和报表受影响",
+              "causes": ["业务高峰期写入激增", "从库 IO 线程被慢 SQL 阻塞", "网络抖动导致 binlog 同步延迟"],
+              "actions": ["短期：临时把读流量切回主库", "中期：排查从库慢 SQL 并加索引", "长期：评估迁移到 GTID 模式"]
+            }
+            """,
+            // 第 1 条：服务器 CPU 高
+            """
+            {
+              "what": "prod-web-01 CPU 使用率持续 10 分钟超过 85%，触发 SERIOUS 级告警",
+              "impact": "前端响应延迟 P99 上升至 2.4s，网关错误率上升 0.3 个百分点",
+              "causes": ["营销活动流量峰值", "Java 应用某接口未走缓存", "近期发布引入了 N+1 查询"],
+              "actions": ["立即：限流保护核心接口", "观察：扩容一台 web 实例", "复盘：审查最近 3 次发布的 SQL 查询"]
+            }
+            """,
+            // 第 2 条：同步作业失败
+            """
+            {
+              "what": "客户信息同步作业（JOB-SYNC-CUSTOMER）连续 2 次失败，阻塞当日数仓 T+1 流程",
+              "impact": "下游 BI 报表延迟 4 小时，CRM 与数仓客户视图数据不一致",
+              "causes": ["源表新增字段导致 schema 不兼容", "同步任务读取超时", "Airflow DAG 重试耗尽"],
+              "actions": ["立即：手动补跑当日批次", "短期：补上 schema 变更通知机制", "长期：迁移到 schema-aware 的同步框架"]
+            }
+            """
+    };
+
+    /** 从指定规则的所有数值型条件中取一个用于回填（state 类型跳过）。 */
+    private AlertRuleCondition firstNumericCondition(Long ruleId) {
+        List<AlertRuleCondition> conds = conditionMapper.selectList(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<AlertRuleCondition>()
+                        .eq(AlertRuleCondition::getRuleId, ruleId)
+                        .orderByAsc(AlertRuleCondition::getConditionOrder));
+        for (AlertRuleCondition c : conds) {
+            String op = c.getCompareOp();
+            if ("GT".equals(op) || "GE".equals(op) || "LT".equals(op) || "LE".equals(op)) {
+                return c;
+            }
+        }
+        return conds.isEmpty() ? null : conds.get(0);
+    }
+
+    /** 入口：12 条历史 event + 全量 metric_sample 7 天分位数据。 */
+    private void seedHistorical(List<MonitorObject> objects, List<AlertRule> rules) {
+        backfillHistoricalEvents(objects, rules);
+        backfillHistoricalMetricSamples(objects, rules);
+    }
+
+    /**
+     * 12 条历史 AlertEvent 跨 day-1 ~ day-7 分布。
+     *
+     * 每条事件用 (rule, object, dayOffset, slotIdx) 唯一定位。状态、级别、是否预生成摘要按下表配比。
+     */
+    private void backfillHistoricalEvents(List<MonitorObject> objects, List<AlertRule> rules) {
+        AlertRule cpuRule = rules.get(0);
+        AlertRule memRule = rules.get(1);
+        AlertRule dbRule = rules.get(2);
+        AlertRule slowRule = rules.get(3);
+        AlertRule jobRule = rules.get(4);
+        AlertRule procRule = rules.get(5);
+
+        MonitorObject web1 = objects.get(0);
+        MonitorObject web2 = objects.get(1);
+        MonitorObject mysql = objects.get(2);
+        MonitorObject syncCustomer = objects.get(4);
+        MonitorObject syncOrder = objects.get(5);
+        MonitorObject report = objects.get(6);
+
+        // 12 条事件计划：(规则, 对象, dayOffset(1=昨天), slotIdx, 状态, 当前值, 预生成摘要 idx 或 -1)
+        Object[][] plan = new Object[][]{
+                // 第 1 天前（昨天）：3 条，含一条 RECOVERED 带预生成摘要
+                {dbRule,   mysql,        1, 0, Enums.EventStatus.RECOVERED, "replication_lag=520 秒", 0},
+                {cpuRule,  web1,         1, 1, Enums.EventStatus.CONFIRMED, "cpu_usage=87%", -1},
+                {procRule, report,       1, 2, Enums.EventStatus.RECOVERED, "job_duration=46 分钟", -1},
+
+                // 第 2 天前：2 条
+                {jobRule,  syncCustomer, 2, 0, Enums.EventStatus.RECOVERED, "job_status=FAILED", 2},
+                {memRule,  web2,         2, 2, Enums.EventStatus.CLOSED, "memory_usage=89%", -1},
+
+                // 第 3 天前：1 条
+                {slowRule, mysql,        3, 1, Enums.EventStatus.CLOSED, "slow_query_per_min=78", -1},
+
+                // 第 4 天前：2 条，含一条 RECOVERED 带预生成摘要
+                {cpuRule,  web2,         4, 0, Enums.EventStatus.RECOVERED, "cpu_usage=91%", 1},
+                {jobRule,  syncOrder,    4, 2, Enums.EventStatus.PENDING, "job_status=FAILED", -1},
+
+                // 第 5 天前：1 条
+                {dbRule,   mysql,        5, 1, Enums.EventStatus.CLOSED, "replication_lag=410 秒", -1},
+
+                // 第 6 天前：2 条
+                {memRule,  web1,         6, 0, Enums.EventStatus.CONFIRMED, "memory_usage=92%", -1},
+                {procRule, report,       6, 2, Enums.EventStatus.PENDING, "job_duration=38 分钟", -1},
+
+                // 第 7 天前：1 条
+                {slowRule, mysql,        7, 1, Enums.EventStatus.CONFIRMED, "slow_query_per_min=64", -1}
+        };
+
+        for (Object[] row : plan) {
+            AlertRule rule = (AlertRule) row[0];
+            MonitorObject obj = (MonitorObject) row[1];
+            int dayOffset = (int) row[2];
+            int slotIdx = (int) row[3];
+            String status = (String) row[4];
+            String currentValue = (String) row[5];
+            int summaryIdx = (int) row[6];
+
+            LocalDateTime triggeredAt = LocalDate.now()
+                    .minusDays(dayOffset)
+                    .atTime(DAILY_SLOTS[slotIdx]);
+
+            String preSummary = (summaryIdx >= 0 && summaryIdx < PRE_GENERATED_SUMMARIES.length)
+                    ? PRE_GENERATED_SUMMARIES[summaryIdx].trim()
+                    : null;
+
+            backfillEvent(rule, obj, currentValue, defaultReason(rule, currentValue),
+                    triggeredAt, status, preSummary);
+        }
+    }
+
+    /**
+     * 直接 mapper.insert 一条历史 AlertEvent，绕过 AlertEventService.triggerEvent 的 SSE 广播 + 异步 LLM 调用。
+     *
+     * 显式赋值 first_triggered_at / last_triggered_at / created_at / updated_at，让 dashboard 7 日趋势按真实日期分组。
+     */
+    private void backfillEvent(AlertRule rule, MonitorObject object,
+                                String currentValue, String reason,
+                                LocalDateTime triggeredAt, String eventStatus,
+                                String preGeneratedSummaryJson) {
+        AlertEvent event = new AlertEvent();
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyyMMdd");
+        event.setEventNo("ALERT-" + triggeredAt.toLocalDate().format(fmt) + "-"
+                + UUID.randomUUID().toString().replace("-", "").substring(0, 6).toUpperCase());
+        event.setRuleId(rule.getId());
+        event.setObjectId(object.getId());
+        event.setObjectType(object.getObjectType());
+        event.setObjectName(object.getObjectName());
+        event.setMetricCode(rule.getRuleCode());
+        event.setMetricName(rule.getRuleName());
+        event.setAlertLevel(rule.getAlertLevel());
+        event.setEventStatus(eventStatus);
+        event.setCurrentValue(currentValue);
+        event.setEventTitle("[" + rule.getAlertLevel() + "] " + object.getObjectName() + " · " + rule.getRuleName());
+        event.setEventContent(reason);
+        event.setEventReason(reason);
+
+        // 状态时间戳
+        event.setFirstTriggeredAt(triggeredAt);
+        event.setLastTriggeredAt(triggeredAt);
+        if (Enums.EventStatus.CONFIRMED.equals(eventStatus)
+                || Enums.EventStatus.RECOVERED.equals(eventStatus)
+                || Enums.EventStatus.CLOSED.equals(eventStatus)) {
+            event.setConfirmedAt(triggeredAt.plusMinutes(8));
+        }
+        if (Enums.EventStatus.RECOVERED.equals(eventStatus)
+                || Enums.EventStatus.CLOSED.equals(eventStatus)) {
+            event.setRecoveredAt(triggeredAt.plusMinutes(35));
+        }
+        if (Enums.EventStatus.CLOSED.equals(eventStatus)) {
+            event.setClosedAt(triggeredAt.plusMinutes(60));
+        }
+
+        // 预生成 AI 摘要
+        if (preGeneratedSummaryJson != null) {
+            event.setAiSummary(preGeneratedSummaryJson);
+            event.setAiSummaryStatus("SUCCESS");
+            event.setAiReasoning("基于历史相似事件特征生成（演示数据预填充）");
+        } else {
+            event.setAiSummaryStatus("PENDING");
+        }
+
+        eventMapper.insert(event);
+    }
+
+    /** 用规则的告警级别和当前值生成一段事件原因文案，避免 schema 里 reason 字段空白。 */
+    private String defaultReason(AlertRule rule, String currentValue) {
+        return rule.getRuleName() + "：" + currentValue + "（连续触发 " + rule.getTriggerTimes() + " 次）";
+    }
+
+    /**
+     * 为每条数值型规则关联的 (object, metric) 维度写 7 天 ~ 14×7 = 98+ 条 metric_sample。
+     *
+     * 数值用 baseValue + sigma * sin(t * 0.4) + 噪声，确保 P95 > P50（满足 Property 4）。
+     */
+    private void backfillHistoricalMetricSamples(List<MonitorObject> objects, List<AlertRule> rules) {
+        LocalDateTime now = LocalDateTime.now();
+        for (AlertRule rule : rules) {
+            AlertRuleCondition cond = firstNumericCondition(rule.getId());
+            if (cond == null) continue;
+            String op = cond.getCompareOp();
+            if (!"GT".equals(op) && !"GE".equals(op) && !"LT".equals(op) && !"LE".equals(op)) {
+                continue; // 跳过状态枚举类
+            }
+            // 找出该规则关联的 object_id
+            List<Long> objectIds = objectRelMapper.selectList(
+                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<AlertRuleObjectRel>()
+                            .eq(AlertRuleObjectRel::getRuleId, rule.getId()))
+                    .stream().map(AlertRuleObjectRel::getObjectId).toList();
+            for (Long objectId : objectIds) {
+                double base = parseBaseValue(cond.getThresholdValue(), cond.getMetricCode());
+                double sigma = base * 0.18;  // 让 P95 - P50 显著
+                backfillMetricSamples(objectId, cond.getMetricCode(), cond.getThresholdUnit(),
+                        base, sigma, now);
+            }
+        }
+    }
+
+    /** 为单个 (object, metric) 写 7 × 14 = 98 条样本。 */
+    private void backfillMetricSamples(Long objectId, String metricCode, String unit,
+                                        double baseValue, double sigma, LocalDateTime now) {
+        List<MetricSample> batch = new ArrayList<>(98);
+        for (int dayOffset = 7; dayOffset >= 1; dayOffset--) {
+            LocalDateTime dayStart = now.toLocalDate().minusDays(dayOffset).atStartOfDay();
+            for (int slot = 0; slot < 14; slot++) {
+                LocalDateTime ts = dayStart.plusMinutes(slot * 100L);  // 约 1.67h 一条
+                double sineComponent = sigma * Math.sin((dayOffset * 14 + slot) * 0.4);
+                double noise = ThreadLocalRandom.current().nextDouble(-sigma / 3, sigma / 3);
+                double value = baseValue + sineComponent + noise;
+
+                MetricSample sample = new MetricSample();
+                sample.setObjectId(objectId);
+                sample.setMetricCode(metricCode);
+                sample.setMetricValue(formatNumeric(value, unit));
+                sample.setNumericValue(BigDecimal.valueOf(value).setScale(4, RoundingMode.HALF_UP));
+                sample.setSampledAt(ts);
+                batch.add(sample);
+            }
+        }
+        for (MetricSample s : batch) {
+            sampleMapper.insert(s);
+        }
+    }
+
+    /** 把规则配置的 threshold（字符串）转成基线数值；解析失败按指标编码兜底经验值。 */
+    private double parseBaseValue(String thresholdValue, String metricCode) {
+        try {
+            return Double.parseDouble(thresholdValue);
+        } catch (NumberFormatException | NullPointerException e) {
+            // 经验兜底
+            return switch (metricCode) {
+                case "cpu_usage" -> 60.0;
+                case "memory_usage" -> 65.0;
+                case "replication_lag" -> 180.0;
+                case "slow_query_per_min" -> 25.0;
+                case "job_duration" -> 18.0;
+                default -> 50.0;
+            };
+        }
+    }
+
+    private String formatNumeric(double value, String unit) {
+        String body = String.format("%.2f", value);
+        return unit == null ? body : body + unit;
     }
 }

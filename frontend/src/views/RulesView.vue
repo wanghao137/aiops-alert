@@ -121,7 +121,8 @@
     </section>
 
     <!-- ========== Rule List ========== -->
-    <section v-loading="loading" class="rule-list">
+    <section v-loading="loading && list.length > 0" class="rule-list">
+      <SkeletonList v-if="loading && list.length === 0" :rows="6" />
       <article
         v-for="item in list"
         :key="item.id"
@@ -431,6 +432,7 @@ import {
 } from 'lucide-vue-next'
 import RuleConditionEditor from '@/components/alert/RuleConditionEditor.vue'
 import NlRuleDialog from '@/components/alert/NlRuleDialog.vue'
+import SkeletonList from '@/components/common/SkeletonList.vue'
 import { OBJECT_TYPES, getObjectTypeMeta } from '@/utils/objectType'
 import { getChannelTypeMeta } from '@/utils/channelType'
 import { ALERT_LEVELS, getAlertLevelMeta } from '@/utils/alertLevel'

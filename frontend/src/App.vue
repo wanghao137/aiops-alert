@@ -2,6 +2,7 @@
   <div class="app-shell">
     <AppSidebar @open-command="cmdStore.open" />
     <main class="app-main">
+      <NetworkBanner :sse-connected="sseConnected" @reconnect="onReconnect" />
       <AppHeader :sse-connected="sseConnected" @open-command="cmdStore.open" />
       <div class="app-content">
         <router-view v-slot="{ Component }">
@@ -20,6 +21,7 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import AppSidebar from './components/layout/AppSidebar.vue'
 import AppHeader from './components/layout/AppHeader.vue'
+import NetworkBanner from './components/layout/NetworkBanner.vue'
 import CommandPalette from './components/command/CommandPalette.vue'
 import { useSse } from './composables/useSse'
 import { useRealtimeStore } from './stores/realtime'
@@ -30,7 +32,7 @@ const realtime = useRealtimeStore()
 const cmdStore = useCommandPaletteStore()
 const sseConnected = ref(false)
 
-const { connected } = useSse((event, data) => {
+const { connected, reconnect } = useSse((event, data) => {
   if (event === 'connected' || event === 'ping') {
     sseConnected.value = true
     return
@@ -51,6 +53,10 @@ const { connected } = useSse((event, data) => {
 })
 
 watch(connected, (v) => { sseConnected.value = v })
+
+function onReconnect() {
+  reconnect()
+}
 
 // Cmd+K / Ctrl+K 全局快捷键
 function onKeydown(e: KeyboardEvent) {

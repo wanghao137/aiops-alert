@@ -31,9 +31,10 @@
           </div>
         </div>
       </div>
-      <div class="loading-text">
-        <span class="dot-anim" />
-        AI 正在分析这次告警…
+      <div class="thinking-line">
+        <span class="prompt-mark">▸</span>
+        <span class="thinking-text">{{ thinkingText }}</span>
+        <span class="caret" />
       </div>
     </div>
 
@@ -87,7 +88,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import {
   Sparkles, RefreshCw, AlertTriangle,
   Search, Activity, HelpCircle, CheckCircle2
@@ -110,6 +111,44 @@ const status = computed(() => {
   if (props.rawStatus === 'FAILED') return 'failed'
   return 'success'
 })
+
+// 终端打字机：PENDING 状态下循环展示 4 段消息，制造 AI 思考的感觉。
+const THINKING_MESSAGES = [
+  '读取告警上下文…',
+  '比对历史相似事件…',
+  '分析根因路径…',
+  '生成处置建议…'
+]
+const thinkingText = ref(THINKING_MESSAGES[0])
+let thinkingIdx = 0
+let thinkingTimer: ReturnType<typeof setInterval> | undefined
+
+function startThinking() {
+  if (thinkingTimer) return
+  thinkingIdx = 0
+  thinkingText.value = THINKING_MESSAGES[0]
+  thinkingTimer = setInterval(() => {
+    thinkingIdx = (thinkingIdx + 1) % THINKING_MESSAGES.length
+    thinkingText.value = THINKING_MESSAGES[thinkingIdx]
+  }, 1600)
+}
+
+function stopThinking() {
+  if (thinkingTimer) {
+    clearInterval(thinkingTimer)
+    thinkingTimer = undefined
+  }
+}
+
+watch(status, (s) => {
+  if (s === 'pending' || s === 'loading') {
+    startThinking()
+  } else {
+    stopThinking()
+  }
+}, { immediate: true })
+
+onBeforeUnmount(() => stopThinking())
 </script>
 
 <style scoped>
@@ -275,6 +314,38 @@ const status = computed(() => {
   font-family: var(--font-mono);
   font-size: 11px;
   letter-spacing: 0.04em;
+}
+
+.thinking-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--accent-line);
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--accent);
+  letter-spacing: 0.02em;
+  align-self: flex-start;
+}
+
+.thinking-line .prompt-mark {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.thinking-line .thinking-text {
+  color: var(--text-secondary);
+}
+
+.thinking-line .caret {
+  display: inline-block;
+  width: 6px;
+  height: 14px;
+  background: var(--accent);
+  animation: blink 1s steps(2) infinite;
 }
 
 .dot-anim {

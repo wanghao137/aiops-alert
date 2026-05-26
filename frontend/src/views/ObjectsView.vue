@@ -104,7 +104,8 @@
     </section>
 
     <!-- ========== Object Grid ========== -->
-    <section v-loading="loading" class="object-grid" :style="{ minHeight: list.length ? 'auto' : '240px' }">
+    <section v-loading="loading && list.length > 0" class="object-grid" :style="{ minHeight: list.length ? 'auto' : '240px' }">
+      <SkeletonList v-if="loading && list.length === 0" :rows="6" variant="row" />
       <article
         v-for="item in list"
         :key="item.id"
@@ -265,6 +266,7 @@ import {
   ServerCrash as ServerCrashIcon
 } from 'lucide-vue-next'
 import { OBJECT_TYPES, getObjectTypeMeta } from '@/utils/objectType'
+import SkeletonList from '@/components/common/SkeletonList.vue'
 import {
   deleteMonitorObject,
   getMonitorObjectStats,

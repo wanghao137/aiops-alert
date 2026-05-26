@@ -53,7 +53,8 @@
     </section>
 
     <!-- ========== Incident 列表 ========== -->
-    <section v-loading="loading" class="incident-list">
+    <section v-loading="loading && incidents.length > 0" class="incident-list">
+      <SkeletonList v-if="loading && incidents.length === 0" :rows="4" />
       <article v-for="inc in incidents" :key="inc.id" class="incident-card">
         <header class="ic-head">
           <span class="ic-strip" :style="{ background: getAlertLevelMeta(inc.topLevel).color }" />
@@ -135,6 +136,7 @@ import {
 } from 'lucide-vue-next'
 import { OBJECT_TYPES, getObjectTypeMeta } from '@/utils/objectType'
 import { getAlertLevelMeta } from '@/utils/alertLevel'
+import SkeletonList from '@/components/common/SkeletonList.vue'
 import { listIncidents, type AlertIncidentItem } from '@/api/alertIncident'
 
 const incidents = ref<AlertIncidentItem[]>([])

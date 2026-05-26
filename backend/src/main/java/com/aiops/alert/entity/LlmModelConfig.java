@@ -36,6 +36,12 @@ public class LlmModelConfig {
     private String status;
     private String description;
 
+    /** Prompt 单价（元/1k token），用于 AI 调用统计页成本估算，可空 */
+    private BigDecimal promptPricePer1k;
+
+    /** Completion 单价（元/1k token），用于 AI 调用统计页成本估算，可空 */
+    private BigDecimal completionPricePer1k;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

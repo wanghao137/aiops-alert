@@ -1,11 +1,14 @@
 import axios, { type AxiosInstance, type AxiosRequestConfig } from 'axios'
 import { ElMessage } from 'element-plus'
+import { useHttpHealth } from '@/composables/useHttpHealth'
 
 export interface ApiResult<T> {
   code: number
   message: string
   data: T
 }
+
+const httpHealth = useHttpHealth()
 
 const instance: AxiosInstance = axios.create({
   baseURL: '/api',
@@ -33,6 +36,10 @@ instance.interceptors.response.use(
     return response
   },
   (error) => {
+    const status = error?.response?.status
+    if (typeof status === 'number' && status >= 500) {
+      httpHealth.reportFailure()
+    }
     let msg = error?.response?.data?.message || error?.message || '网络异常'
     if (error?.code === 'ECONNABORTED' || /timeout/i.test(msg)) {
       msg = 'AI 调用超时，模型可能在思考较长内容，可稍后再试或调小请求'

@@ -100,7 +100,8 @@
           </el-input>
         </div>
 
-        <div v-loading="loading" class="event-list">
+        <div v-loading="loading && events.length > 0" class="event-list">
+          <SkeletonList v-if="loading && events.length === 0" :rows="6" />
           <article
             v-for="ev in events"
             :key="ev.id"
@@ -303,6 +304,7 @@ import {
 } from 'lucide-vue-next'
 import AiSummaryCard from '@/components/alert/AiSummaryCard.vue'
 import ThinkingPanel from '@/components/ai/ThinkingPanel.vue'
+import SkeletonList from '@/components/common/SkeletonList.vue'
 import { OBJECT_TYPES, getObjectTypeMeta } from '@/utils/objectType'
 import { getChannelTypeMeta } from '@/utils/channelType'
 import { ALERT_LEVELS, getAlertLevelMeta } from '@/utils/alertLevel'

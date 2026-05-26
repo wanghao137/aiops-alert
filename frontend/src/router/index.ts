@@ -46,6 +46,19 @@ const routes: RouteRecordRaw[] = [
     name: 'settings',
     component: () => import('@/views/SettingsView.vue'),
     meta: { title: '系统设置', icon: 'Settings' }
+  },
+  {
+    path: '/ai-stats',
+    name: 'ai-stats',
+    component: () => import('@/views/AiStatsView.vue'),
+    meta: { title: 'AI 调用统计', icon: 'Activity' }
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'not-found',
+    component: () => import('@/views/ErrorPage.vue'),
+    props: { variant: '404' },
+    meta: { title: '页面未找到' }
   }
 ]
 
