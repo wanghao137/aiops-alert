@@ -9,7 +9,12 @@
           <span class="hero-time">{{ now }}</span>
         </div>
         <div class="hero-headline">
-          <span class="hero-num" :class="{ urgent: pendingActive }">{{ formatNum(data?.pendingEventTotal) }}</span>
+          <div class="hero-num-wrap">
+            <span class="hero-rule" aria-hidden="true">
+              <span /><span /><span /><span /><span /><span /><span /><span />
+            </span>
+            <span class="hero-num" :class="{ urgent: pendingActive }">{{ formatNum(data?.pendingEventTotal) }}</span>
+          </div>
           <div class="hero-words">
             <div class="hero-line-1">{{ pendingActive ? '正在处理' : '系统平稳' }}</div>
             <div class="hero-line-2">
@@ -602,6 +607,38 @@ onBeforeUnmount(() => {
 }
 
 .hero-num.urgent { color: var(--accent); }
+
+/* Editorial: 大数字旁的垂直刻度尺装饰（frontend-design 优化） */
+.hero-num-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.hero-rule {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 88px;
+  padding: 4px 0;
+}
+
+.hero-rule span {
+  display: block;
+  height: 1px;
+  background: var(--text-faint);
+  opacity: 0.4;
+}
+
+.hero-rule span:nth-child(odd) { width: 14px; }
+.hero-rule span:nth-child(even) { width: 8px; }
+.hero-rule span:nth-child(1),
+.hero-rule span:last-child {
+  background: var(--accent);
+  opacity: 0.7;
+  width: 18px;
+}
 
 .hero-words {
   padding-bottom: 8px;

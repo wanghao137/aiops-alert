@@ -63,10 +63,11 @@
 
   /* 微噪点 + 网格背景纹理 */
   --bg-image:
-    radial-gradient(ellipse 1200px 600px at 50% -10%, rgba(125, 211, 252, 0.06), transparent 70%),
-    radial-gradient(ellipse 800px 500px at 100% 110%, rgba(251, 191, 36, 0.04), transparent 70%),
-    linear-gradient(rgba(255, 255, 255, 0.012) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.012) 1px, transparent 1px);
+    radial-gradient(ellipse 1200px 600px at 50% -10%, rgba(125, 211, 252, 0.08), transparent 70%),
+    radial-gradient(ellipse 800px 500px at 100% 110%, rgba(251, 191, 36, 0.05), transparent 70%),
+    radial-gradient(ellipse 600px 400px at 0% 50%, rgba(251, 113, 133, 0.03), transparent 70%),
+    linear-gradient(rgba(255, 255, 255, 0.014) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.014) 1px, transparent 1px);
 }
 
 /* ---------- LIGHT 主题 ---------- */
@@ -109,10 +110,11 @@
 
   /* 浅色背景纹理（更克制） */
   --bg-image:
-    radial-gradient(ellipse 1200px 600px at 50% -10%, rgba(2, 132, 199, 0.05), transparent 70%),
-    radial-gradient(ellipse 800px 500px at 100% 110%, rgba(180, 83, 9, 0.03), transparent 70%),
-    linear-gradient(rgba(15, 17, 21, 0.018) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(15, 17, 21, 0.018) 1px, transparent 1px);
+    radial-gradient(ellipse 1200px 600px at 50% -10%, rgba(2, 132, 199, 0.07), transparent 70%),
+    radial-gradient(ellipse 800px 500px at 100% 110%, rgba(180, 83, 9, 0.04), transparent 70%),
+    radial-gradient(ellipse 600px 400px at 0% 50%, rgba(190, 18, 60, 0.03), transparent 70%),
+    linear-gradient(rgba(15, 17, 21, 0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 17, 21, 0.022) 1px, transparent 1px);
 }
 
 /* ---------- 默认行为 ---------- */
@@ -254,6 +256,71 @@ body {
 @keyframes shimmer {
   0%   { background-position: 0% 50%; }
   100% { background-position: 200% 50%; }
+}
+
+/* ---------- Editorial Stagger 入场（frontend-design 编排） ---------- */
+/* main 元素下 1-N 级直系子节点错位淡入：每多 1 个延迟 60ms，营造一次性页面登场 */
+.app-content > * > section,
+.app-content > * > div > section {
+  animation: fade-up-stagger 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.app-content > * > section:nth-child(1),
+.app-content > * > div > section:nth-child(1) { animation-delay: 0ms; }
+.app-content > * > section:nth-child(2),
+.app-content > * > div > section:nth-child(2) { animation-delay: 60ms; }
+.app-content > * > section:nth-child(3),
+.app-content > * > div > section:nth-child(3) { animation-delay: 120ms; }
+.app-content > * > section:nth-child(4),
+.app-content > * > div > section:nth-child(4) { animation-delay: 180ms; }
+.app-content > * > section:nth-child(5),
+.app-content > * > div > section:nth-child(5) { animation-delay: 240ms; }
+.app-content > * > section:nth-child(6),
+.app-content > * > div > section:nth-child(6) { animation-delay: 300ms; }
+
+@keyframes fade-up-stagger {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+/* ---------- Editorial 角标：panel-block 左上角刻度 + 索引 ---------- */
+.panel-block {
+  position: relative;
+  isolation: isolate;
+}
+
+.panel-block::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 18px;
+  width: 24px;
+  height: 1px;
+  background: var(--accent);
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Editorial 大数字：紧凑、tabular ligatures */
+.hero-num {
+  font-feature-settings: 'tnum', 'ss01', 'cv01';
+}
+
+/* 减少动画的辅助功能：用户偏好 prefers-reduced-motion 时关闭 stagger */
+@media (prefers-reduced-motion: reduce) {
+  .app-content > * > section,
+  .app-content > * > div > section {
+    animation: none !important;
+  }
 }
 
 

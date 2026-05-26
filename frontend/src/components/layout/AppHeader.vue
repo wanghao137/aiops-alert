@@ -114,6 +114,24 @@ async function onDemoCmd(cmd: string) {
   border-bottom: 1px solid var(--line);
 }
 
+/* frontend-design: 顶栏底部加 cyan 渐变发光线，精致度提升 */
+.app-header::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    var(--accent-line) 20%,
+    var(--accent) 50%,
+    var(--accent-line) 80%,
+    transparent 100%);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
 .eyebrow-line {
   display: flex;
   align-items: center;
