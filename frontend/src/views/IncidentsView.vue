@@ -596,4 +596,57 @@ onMounted(loadAll)
 }
 
 .empty-hint { font-size: 12px; }
+
+@media (max-width: 900px) {
+  .incidents-v {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .incident-card {
+    padding: 18px 14px;
+    overflow: hidden;
+  }
+
+  .ic-head {
+    grid-template-columns: 3px minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .ic-stat {
+    display: none;
+  }
+
+  .obj-name,
+  .tl-title {
+    white-space: normal;
+  }
+
+  .timeline,
+  .tl-row,
+  .tl-card {
+    min-width: 0;
+  }
+
+  .tl-row {
+    grid-template-columns: 54px 20px minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .tl-time {
+    font-size: 10px;
+    word-break: break-word;
+  }
+
+  .tl-card {
+    padding: 10px 12px;
+  }
+
+  .toolbar {
+    align-items: stretch;
+  }
+
+  .type-select {
+    width: 100%;
+  }
+}
 </style>

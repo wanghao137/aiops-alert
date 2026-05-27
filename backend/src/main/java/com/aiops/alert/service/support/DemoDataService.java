@@ -139,8 +139,8 @@ public class DemoDataService {
         wecom.setProviderName("企业微信");
         wecom.setStatus(Enums.Status.ENABLED);
         wecom.setPriority(10);
-        wecom.setConfigJson("{\"webhook\":\"https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=demo\",\"mentionedMobileList\":\"13800000001,13800000002\"}");
-        wecom.setDescription("演示用，webhook 为占位地址，会发送失败但流程完整");
+        wecom.setConfigJson("{\"webhook\":\"https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=demo\",\"mentionedMobileList\":\"13800000001,13800000002\",\"dryRun\":true}");
+        wecom.setDescription("dryRun 模式演示，标记成功不真实发送");
         channelMapper.insert(wecom);
 
         AlertChannel email = new AlertChannel();
@@ -150,8 +150,8 @@ public class DemoDataService {
         email.setProviderName("自建 SMTP");
         email.setStatus(Enums.Status.ENABLED);
         email.setPriority(20);
-        email.setConfigJson("{\"host\":\"smtp.example.com\",\"port\":465,\"ssl\":true,\"username\":\"alert@example.com\",\"password\":\"demo\",\"defaultReceivers\":\"ops@example.com\"}");
-        email.setDescription("演示用，发送会失败但流程完整");
+        email.setConfigJson("{\"host\":\"smtp.example.com\",\"port\":465,\"ssl\":true,\"username\":\"alert@example.com\",\"password\":\"demo\",\"defaultReceivers\":\"ops@example.com\",\"dryRun\":true}");
+        email.setDescription("dryRun 模式演示，标记成功不真实发送");
         channelMapper.insert(email);
 
         AlertChannel sms = new AlertChannel();

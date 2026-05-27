@@ -51,6 +51,13 @@ public class EmailNotifySender implements AlertNotifySender {
     public void send(AlertNotifyLog notifyLog, AlertChannel channel) {
         try {
             JsonNode config = parseConfig(channel.getConfigJson());
+            if (config.path("dryRun").asBoolean(false)) {
+                notifyLog.setSendStatus(Enums.NotifyStatus.SUCCESS);
+                notifyLog.setSentAt(LocalDateTime.now());
+                notifyLog.setProviderMsgId("EMAIL-DRYRUN-" + UUID.randomUUID().toString().replace("-", "").substring(0, 12));
+                notifyLog.setFailureReason("dryRun 模式，未真实发送");
+                return;
+            }
             String host = text(config, "host");
             String username = text(config, "username");
             String password = text(config, "password");

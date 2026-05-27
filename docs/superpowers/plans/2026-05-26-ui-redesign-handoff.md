@@ -131,7 +131,7 @@ function readToken(name: string, fallback: string) {
 
 - 后端：http://localhost:8090/api （H2 dev profile）
 - 前端：vite dev server，端口 5173-5177 之一
-- LLM：智谱 GLM-5.1，已配置且测试连通成功
+- LLM：已迁移为 DeepSeek V4 Flash/Pro 配置
 - 演示数据：seed API 可用（7 对象 / 3 渠道 / 6 规则）
 
 ## 验证

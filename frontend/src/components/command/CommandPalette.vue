@@ -146,7 +146,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch, type Component } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch, type Component } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   X, ArrowRight, Bot,
@@ -185,10 +185,12 @@ const suggestions: Suggestion[] = [
 ]
 
 watch(visible, async (v) => {
+  window.removeEventListener('keydown', onGlobalKeydown)
   if (v) {
     prompt.value = ''
     result.value = undefined
     selected.value = 0
+    window.addEventListener('keydown', onGlobalKeydown)
     await nextTick()
     inputRef.value?.focus()
   }
@@ -196,6 +198,13 @@ watch(visible, async (v) => {
 
 function close() {
   visible.value = false
+  window.removeEventListener('keydown', onGlobalKeydown)
+}
+
+function onGlobalKeydown(e: KeyboardEvent) {
+  if (!visible.value || e.key !== 'Escape') return
+  e.preventDefault()
+  close()
 }
 
 function onMaskClick() {
@@ -238,6 +247,10 @@ function goEvent(id: number) {
   router.push({ path: '/events', query: { focus: id } })
   close()
 }
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onGlobalKeydown)
+})
 </script>
 
 <style scoped>

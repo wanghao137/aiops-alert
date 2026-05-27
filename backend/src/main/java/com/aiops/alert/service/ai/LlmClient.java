@@ -34,12 +34,10 @@ import org.springframework.web.client.RestTemplate;
  * - 自动重试瞬态网络错误（Connection reset / read timeout）
  * - 提供 chat 与 chatJson 两种入口（chatJson 强制 response_format=json_object）
  *
- * 兼容多家 OpenAI-style 端点：
- * - 智谱 BigModel  https://open.bigmodel.cn/api/paas/v4
- *   (Coding Plan)  https://open.bigmodel.cn/api/coding/paas/v4
- * - DeepSeek      https://api.deepseek.com/v1
- * - 阿里通义       https://dashscope.aliyuncs.com/compatible-mode/v1
- * - OpenAI / 任何 OpenAI 兼容代理
+     * 兼容多家 OpenAI-style 端点：
+     * - DeepSeek      https://api.deepseek.com
+     * - 阿里通义       https://dashscope.aliyuncs.com/compatible-mode/v1
+     * - OpenAI / 任何 OpenAI 兼容代理
  */
 @Slf4j
 @Component
@@ -153,16 +151,9 @@ public class LlmClient {
         Map<String, Object> body = new HashMap<>();
         body.put("model", config.getModelName());
         body.put("temperature", config.getTemperature() == null ? 0.2 : config.getTemperature());
-        // max_tokens：推理类模型（GLM-5.1/4.7/4.5 等）思考会消耗 token，要给足
-        // 这里取配置值并做下限保护，至少 8192
+        // max_tokens：推理模型的思考过程也会消耗 token，这里做下限保护，至少 8192。
         int maxTokens = config.getMaxTokens() == null ? 8192 : Math.max(8192, config.getMaxTokens());
         body.put("max_tokens", maxTokens);
-
-        // 智谱思考类模型独有：清理历史思考块，控制上下文长度。
-        // 其他厂商（DeepSeek/OpenAI/通义）会忽略这个未知字段，所以加上不会报错。
-        if (isZhipuEndpoint(config.getBaseUrl())) {
-            body.put("thinking", Map.of("clear_thinking", true));
-        }
 
         List<Map<String, Object>> messages = new ArrayList<>();
         if (StrUtil.isNotBlank(systemPrompt)) {
@@ -210,11 +201,6 @@ public class LlmClient {
         callLogMapper.insert(logRow);
 
         return new ChatResult(content, reasoning, logRow);
-    }
-
-    /** 是否是智谱 BigModel 端点（包括通用 paas 和 coding plan）。 */
-    private boolean isZhipuEndpoint(String baseUrl) {
-        return baseUrl != null && baseUrl.contains("bigmodel.cn");
     }
 
     /** 把底层异常转成对用户友好的提示。 */

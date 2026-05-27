@@ -135,6 +135,10 @@ body {
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
+body.el-popup-parent--hidden .app-header {
+  z-index: 0;
+}
+
 * { box-sizing: border-box; }
 
 ::selection {
@@ -404,29 +408,40 @@ body {
 }
 
 .el-dialog {
-  margin: 6vh auto !important;
-  max-height: 88vh;
+  margin: clamp(16px, 4vh, 40px) auto !important;
+  max-height: min(88vh, calc(100vh - 32px));
   display: flex;
   flex-direction: column;
   /* element-plus 默认在 inline style 上加 top: 15vh，覆盖掉 */
   top: 0 !important;
+  overflow: hidden;
 }
 
 /* header 不缩，footer 不缩，body 占余下空间且滚动 */
 .el-dialog__header {
   flex: 0 0 auto;
+  margin-right: 0;
+  padding: 18px 20px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.el-dialog__headerbtn {
+  top: 12px;
+  right: 14px;
 }
 
 .el-dialog__body {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
+  padding: 16px 20px 18px;
   /* 让滚动条不挤掉边距 */
   overscroll-behavior: contain;
 }
 
 .el-dialog__footer {
   flex: 0 0 auto;
+  padding: 12px 20px;
   border-top: 1px solid var(--line);
   background: var(--bg-elev-1);
 }
@@ -444,4 +459,182 @@ body {
 }
 .el-dialog__body::-webkit-scrollbar-thumb:hover {
   background: var(--text-faint);
+}
+
+/* =============================================================
+   全局响应式：把控制台压到手机宽度时保持单列、无横向溢出
+============================================================= */
+@media (max-width: 900px) {
+  body {
+    background-attachment: scroll;
+  }
+
+  .app-content .dashboard-v,
+  .app-content .events-v,
+  .app-content .incidents-v,
+  .app-content .rules-v,
+  .app-content .objects-v,
+  .app-content .channels-v,
+  .app-content .settings-v,
+  .app-content .ai-stats-v {
+    gap: 16px !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    min-width: 0;
+    padding: 0 14px 88px !important;
+  }
+
+  .app-content .dashboard-v > *,
+  .app-content .events-v > *,
+  .app-content .incidents-v > *,
+  .app-content .rules-v > *,
+  .app-content .objects-v > *,
+  .app-content .channels-v > *,
+  .app-content .settings-v > *,
+  .app-content .ai-stats-v > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .app-content .hero {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+    padding: 22px 0 20px;
+  }
+
+  .app-content .hero-eyebrow {
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .app-content .hero-headline {
+    align-items: flex-end;
+    gap: 16px;
+  }
+
+  .app-content .hero-num {
+    font-size: 64px !important;
+    line-height: 0.9;
+  }
+
+  .app-content .hero-line-1 {
+    font-size: 18px !important;
+  }
+
+  .app-content .hero-line-2 {
+    font-size: 11px;
+    line-height: 1.7;
+    letter-spacing: 0;
+  }
+
+  .app-content .hero-right {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 8px;
+  }
+
+  .app-content .toolbar,
+  .app-content .filters,
+  .app-content .filter-row {
+    width: 100%;
+    align-items: stretch;
+  }
+
+  .app-content .toolbar {
+    display: flex !important;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .app-content .seg {
+    width: 100%;
+    max-width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    border-radius: var(--radius-md);
+  }
+
+  .app-content .seg::-webkit-scrollbar {
+    display: none;
+  }
+
+  .app-content .seg-item {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  .app-content .filters,
+  .app-content .filter-row {
+    display: grid !important;
+    grid-template-columns: 1fr;
+  }
+
+  .app-content .filter-select,
+  .app-content .filter-input,
+  .app-content .type-select,
+  .app-content .f-select,
+  .app-content .f-input {
+    width: 100% !important;
+    min-width: 0;
+  }
+
+  .app-content .kpi-row,
+  .app-content .stat-bar,
+  .app-content .type-overview {
+    grid-template-columns: 1fr !important;
+  }
+
+  .app-content .channel-grid,
+  .app-content .object-grid,
+  .app-content .rule-list,
+  .app-content .llm-list {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .app-content .panel-title-row {
+    flex-direction: column;
+  }
+
+  .app-content .legend {
+    gap: 8px;
+  }
+
+  .app-content .chart {
+    height: 220px;
+  }
+
+  .app-content .slow-card,
+  .app-content .log-list {
+    overflow-x: auto;
+  }
+
+  .app-content .slow-card table,
+  .app-content .log-list table {
+    min-width: 720px;
+  }
+
+  .el-dialog {
+    width: calc(100vw - 24px) !important;
+    max-height: calc(100vh - 24px);
+    margin: 12px auto !important;
+  }
+
+  .el-drawer {
+    width: min(100vw, 640px) !important;
+  }
+}
+
+@media (max-width: 520px) {
+  .app-content .hero-headline {
+    align-items: flex-start;
+  }
+
+  .app-content .hero-words {
+    min-width: 0;
+  }
+
+  .app-content .hero-line-2 {
+    word-break: break-word;
+  }
 }

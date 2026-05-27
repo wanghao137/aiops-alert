@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.UUID;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -52,6 +53,10 @@ public class WecomNotifySender implements AlertNotifySender {
     public void send(AlertNotifyLog notifyLog, AlertChannel channel) {
         try {
             JsonNode config = parseConfig(channel.getConfigJson());
+            if (config.path("dryRun").asBoolean(false)) {
+                markDryRunSuccess(notifyLog, "WECOM-DRYRUN-");
+                return;
+            }
             String webhook = text(config, "webhook");
             if (StrUtil.isBlank(webhook)) {
                 fail(notifyLog, "企业微信 webhook 不能为空");
@@ -121,5 +126,12 @@ public class WecomNotifySender implements AlertNotifySender {
     private void fail(AlertNotifyLog notifyLog, String reason) {
         notifyLog.setSendStatus(Enums.NotifyStatus.FAILED);
         notifyLog.setFailureReason(reason);
+    }
+
+    private void markDryRunSuccess(AlertNotifyLog notifyLog, String prefix) {
+        notifyLog.setSendStatus(Enums.NotifyStatus.SUCCESS);
+        notifyLog.setSentAt(LocalDateTime.now());
+        notifyLog.setProviderMsgId(prefix + UUID.randomUUID().toString().replace("-", "").substring(0, 12));
+        notifyLog.setFailureReason("dryRun 模式，未真实发送");
     }
 }

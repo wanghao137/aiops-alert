@@ -76,6 +76,7 @@ test.describe('导航 / 路由 / 主题切换', () => {
     const sugs = palette.locator('.sug-item')
     expect(await sugs.count()).toBeGreaterThanOrEqual(5)
 
+    await palette.locator('.palette-foot').click()
     await page.keyboard.press('Escape')
     await expect(palette).not.toBeVisible({ timeout: 3_000 })
   })

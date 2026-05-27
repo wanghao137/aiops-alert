@@ -42,6 +42,8 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Slf4j
 @Service
@@ -260,16 +262,34 @@ public class AlertEventService {
         AlertEventResponse resp = toResponse(event, true);
         streamService.broadcast("event-created", resp);
 
-        // 异步生成 AI 摘要
-        try {
-            summaryService.summarizeAsync(event.getId());
-        } catch (Exception e) {
-            log.warn("trigger summarize failed: {}", e.getMessage());
-        }
+        scheduleSummaryAfterCommit(event.getId());
         return resp;
     }
 
     // ---------------- helpers ----------------
+
+    private void scheduleSummaryAfterCommit(Long eventId) {
+        if (eventId == null) {
+            return;
+        }
+        Runnable task = () -> {
+            try {
+                summaryService.summarizeAsync(eventId);
+            } catch (Exception e) {
+                log.warn("trigger summarize failed: {}", e.getMessage());
+            }
+        };
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    task.run();
+                }
+            });
+        } else {
+            task.run();
+        }
+    }
 
     private String mapActionToStatus(String action, String before) {
         return switch (action) {

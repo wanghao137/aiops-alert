@@ -13,7 +13,7 @@
         <span class="spinner" />
         生成中
       </span>
-      <button v-if="!loading && status !== 'pending'" class="refresh-btn" @click="emit('refresh')">
+      <button v-if="!loading" class="refresh-btn" :class="{ subtle: status === 'pending' }" @click="emit('refresh')">
         <RefreshCw :size="12" :stroke-width="1.8" />
         重新生成
       </button>
@@ -35,6 +35,9 @@
         <span class="prompt-mark">▸</span>
         <span class="thinking-text">{{ thinkingText }}</span>
         <span class="caret" />
+      </div>
+      <div v-if="status === 'pending' && !loading" class="pending-hint">
+        摘要等待回写中。若长期停留在该状态，可重新生成。
       </div>
     </div>
 
@@ -181,6 +184,7 @@ onBeforeUnmount(() => stopThinking())
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
   margin-bottom: 16px;
 }
 
@@ -254,6 +258,12 @@ onBeforeUnmount(() => stopThinking())
 
 .refresh-btn:hover {
   border-color: var(--accent);
+  color: var(--accent);
+}
+
+.refresh-btn.subtle {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
   color: var(--accent);
 }
 
@@ -346,6 +356,16 @@ onBeforeUnmount(() => stopThinking())
   height: 14px;
   background: var(--accent);
   animation: blink 1s steps(2) infinite;
+}
+
+.pending-hint {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.6;
 }
 
 .dot-anim {

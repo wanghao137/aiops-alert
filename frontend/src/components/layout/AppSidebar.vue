@@ -21,6 +21,7 @@
           v-for="item in items"
           :key="item.path"
           :to="item.path"
+          :title="item.title"
           class="nav-item"
           active-class="active"
         >
@@ -106,7 +107,8 @@ function iconOf(name: string) {
   grid-template-columns: auto 1fr;
   gap: 12px;
   align-items: center;
-  padding: 22px 22px 24px;
+  height: 72px;
+  padding: 0 22px;
   border-bottom: 1px solid var(--line);
   position: relative;
 }
@@ -286,5 +288,80 @@ function iconOf(name: string) {
 
 .version .ver {
   color: var(--text-muted);
+}
+
+@media (max-width: 900px) {
+  .sidebar {
+    position: fixed;
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1200;
+    display: block;
+    width: 100vw;
+    max-width: 100vw;
+    height: 64px;
+    border-top: 1px solid var(--line);
+    border-right: 0;
+    background: color-mix(in srgb, var(--bg-elev-1) 92%, transparent);
+    backdrop-filter: blur(14px);
+  }
+
+  .brand,
+  .sidebar-foot,
+  .nav-label {
+    display: none;
+  }
+
+  .nav-section {
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    padding: 6px 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .nav-section::-webkit-scrollbar {
+    display: none;
+  }
+
+  .nav {
+    min-width: 0;
+    height: 100%;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: stretch;
+    gap: 2px;
+  }
+
+  .nav-item {
+    width: 42px;
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr;
+    justify-items: center;
+    align-items: center;
+    gap: 2px;
+    padding: 7px 5px;
+    font-size: 10.5px;
+  }
+
+  .nav-item span:not(.badge) {
+    display: none;
+  }
+
+  .nav-item.active::before {
+    top: -6px;
+    left: 50%;
+    width: 22px;
+    height: 2px;
+    transform: translateX(-50%);
+    border-radius: 0 0 2px 2px;
+  }
+
+  .badge {
+    display: none;
+  }
 }
 </style>

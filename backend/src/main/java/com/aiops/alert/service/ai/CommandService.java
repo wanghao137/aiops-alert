@@ -52,6 +52,11 @@ public class CommandService {
     public CommandResponse handle(CommandRequest request) {
         String prompt = request.getPrompt().trim();
 
+        CommandResponse deterministicRoute = routeByKeyword(prompt);
+        if (deterministicRoute != null) {
+            return deterministicRoute;
+        }
+
         // AI 不可用时走简单关键词匹配兜底，保证演示能跑
         if (!configService.hasUsableConfig()) {
             return fallbackKeyword(prompt);
@@ -70,13 +75,14 @@ public class CommandService {
                     "keyword":     "可选，标题/对象/编号关键字",
                     "limit":       数字，可选
                   },
-                  "routePath": "/dashboard | /events | /incidents | /rules | /objects | /channels | /settings",
+                  "routePath": "/dashboard | /events | /incidents | /rules | /objects | /channels | /settings | /ai-stats",
                   "summary":   "一句中文，对用户提问的复述/回答（不超过 80 字）"
                 }
 
                 # 例子
                 输入"现在哪些对象在告警" → {"intent":"list_events","filters":{"eventStatus":"PENDING","limit":20},"summary":"查询当前所有待处理告警事件"}
                 输入"打开规则页面" → {"intent":"route","routePath":"/rules","summary":"跳转到告警规则页面"}
+                输入"打开 AI 调用统计页面" → {"intent":"route","routePath":"/ai-stats","summary":"跳转到 AI 调用统计页面"}
                 输入"今天有多少紧急告警" → {"intent":"count_events","filters":{"alertLevel":"CRITICAL"},"summary":"统计当前紧急级别告警数量"}
                 输入"prod-mysql 的告警" → {"intent":"list_events","filters":{"objectName":"prod-mysql","limit":20},"summary":"查询 prod-mysql 相关告警"}
 
@@ -218,6 +224,13 @@ public class CommandService {
                     .answer("跳转系统设置")
                     .build();
         }
+        if (p.contains("ai") && (p.contains("统计") || p.contains("调用") || p.contains("stats"))) {
+            return CommandResponse.builder()
+                    .intent("route")
+                    .routePath("/ai-stats")
+                    .answer("跳转 AI 调用统计")
+                    .build();
+        }
         // 默认看作关键字搜索事件
         List<AlertEventResponse> events = eventService.list(null, null, null, prompt, 10);
         return CommandResponse.builder()
@@ -225,6 +238,48 @@ public class CommandService {
                 .answer(events.isEmpty() ? "未找到匹配事件" : "搜到 " + events.size() + " 条相关事件")
                 .events(events)
                 .total((long) events.size())
+                .build();
+    }
+
+    private CommandResponse routeByKeyword(String prompt) {
+        String p = prompt.toLowerCase();
+        String routePath = null;
+        String answer = null;
+        if (p.contains("ai") && (p.contains("统计") || p.contains("调用") || p.contains("stats"))) {
+            routePath = "/ai-stats";
+            answer = "跳转 AI 调用统计";
+        } else if ((p.contains("打开") || p.contains("跳转") || p.contains("进入") || p.contains("route"))
+                && (p.contains("仪表") || p.contains("看板") || p.contains("总览") || p.contains("dashboard"))) {
+            routePath = "/dashboard";
+            answer = "跳转总览大屏";
+        } else if ((p.contains("打开") || p.contains("跳转") || p.contains("进入") || p.contains("route"))
+                && (p.contains("规则") || p.contains("rule"))) {
+            routePath = "/rules";
+            answer = "跳转告警规则";
+        } else if ((p.contains("打开") || p.contains("跳转") || p.contains("进入") || p.contains("route"))
+                && (p.contains("incident") || p.contains("故障") || p.contains("归并"))) {
+            routePath = "/incidents";
+            answer = "跳转 Incident 视图";
+        } else if ((p.contains("打开") || p.contains("跳转") || p.contains("进入") || p.contains("route"))
+                && (p.contains("渠道") || p.contains("channel"))) {
+            routePath = "/channels";
+            answer = "跳转通知渠道";
+        } else if ((p.contains("打开") || p.contains("跳转") || p.contains("进入") || p.contains("route"))
+                && (p.contains("对象") || p.contains("object"))) {
+            routePath = "/objects";
+            answer = "跳转监控对象";
+        } else if ((p.contains("打开") || p.contains("跳转") || p.contains("进入") || p.contains("route"))
+                && (p.contains("设置") || p.contains("配置") || p.contains("setting"))) {
+            routePath = "/settings";
+            answer = "跳转系统设置";
+        }
+        if (routePath == null) {
+            return null;
+        }
+        return CommandResponse.builder()
+                .intent("route")
+                .routePath(routePath)
+                .answer(answer)
                 .build();
     }
 

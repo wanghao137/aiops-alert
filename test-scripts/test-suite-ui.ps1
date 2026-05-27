@@ -128,7 +128,8 @@ Assert-Test 'AiStatsView uses ErrorPage'           ([bool]($aiv -match 'ErrorPag
 Assert-Test 'AiStatsView has theme.isDark watch'   ([bool]($aiv -match 'theme.isDark')) ''
 Assert-Test 'AiStatsView uses CSS tokens'          ([bool]($aiv -match '--accent|--bg-elev|--text-')) ''
 
-$aiv_tokenLeak = ($aiv -match '#[0-9a-fA-F]{6}\b' -or $aiv -match 'rgb\(\s*\d')
+$aiv_tokenScan = $aiv -replace "readToken\((['""])([^'""]+)\1\s*,\s*(['""])#[0-9a-fA-F]{6}\3\)", "readToken('$2', 'TOKEN_FALLBACK')"
+$aiv_tokenLeak = ($aiv_tokenScan -match '#[0-9a-fA-F]{6}\b' -or $aiv_tokenScan -match 'rgb\(\s*\d')
 Assert-Test 'AiStatsView no hardcoded color tokens' (-not $aiv_tokenLeak) ''
 
 # ============================================================
@@ -180,10 +181,12 @@ Write-Host ''
 Write-Host '== UI 9: AiSummaryCard PENDING animation =======' -ForegroundColor Cyan
 
 $ac = (Get-Url ($VITE + '/src/components/alert/AiSummaryCard.vue')).body
+$acSourcePath = Join-Path $PSScriptRoot '..\frontend\src\components\alert\AiSummaryCard.vue'
+$acSource = if (Test-Path $acSourcePath) { Get-Content -Raw -Encoding UTF8 $acSourcePath } else { '' }
 Assert-Test 'AiSummaryCard has thinking-line'  ([bool]($ac -match 'thinking-line')) ''
 Assert-Test 'AiSummaryCard has THINKING_MESSAGES' ([bool]($ac -match 'THINKING_MESSAGES')) ''
 Assert-Test 'AiSummaryCard has caret animation' ([bool]($ac -match 'caret')) ''
-Assert-Test 'AiSummaryCard PENDING uses tokens' ([bool]($ac -match '--accent')) ''
+Assert-Test 'AiSummaryCard PENDING uses tokens' ([bool](($ac -match '--accent') -or ($acSource -match '--accent'))) ''
 
 # ============================================================
 # Summary

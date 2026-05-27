@@ -17,7 +17,7 @@
                 默认 · {{ defaultConfig?.configName }} · {{ defaultConfig?.modelName }}
               </template>
               <template v-else>
-                添加 OpenAI / DeepSeek / Qwen / GLM 兼容协议的服务，启用 AI 建规则与告警摘要
+                添加 DeepSeek / OpenAI / Qwen 兼容协议的服务，启用 AI 建规则与告警摘要
               </template>
             </div>
           </div>
@@ -129,7 +129,7 @@
       <div v-if="!loading && list.length === 0" class="empty">
         <BrainIcon :size="28" :stroke-width="1.4" />
         <div class="empty-title">还没有 LLM 配置</div>
-        <div class="empty-hint">配置一个 OpenAI 兼容的服务（GPT-4o / DeepSeek / Qwen / GLM），AI 能力就能用。</div>
+        <div class="empty-hint">配置一个 OpenAI 兼容的服务（DeepSeek / GPT-4o / Qwen），AI 能力就能用。</div>
         <button class="hero-action primary" @click="openCreate">
           <PlusIcon :size="13" :stroke-width="1.7" /> 新增 LLM 配置
         </button>
@@ -162,14 +162,13 @@
 
         <div class="form-grid">
           <el-form-item label="配置名称" prop="configName" class="span-2">
-            <el-input v-model="form.configName" placeholder="例如：DeepSeek-Chat 主模型" />
+            <el-input v-model="form.configName" placeholder="例如：DeepSeek V4 Flash 主模型" />
           </el-form-item>
           <el-form-item label="提供商">
             <el-select v-model="form.provider" class="full">
-              <el-option label="OpenAI" value="OPENAI" />
               <el-option label="DeepSeek" value="DEEPSEEK" />
+              <el-option label="OpenAI" value="OPENAI" />
               <el-option label="通义千问 Qwen" value="QWEN" />
-              <el-option label="智谱 GLM" value="ZHIPU" />
               <el-option label="Custom (兼容 OpenAI)" value="CUSTOM" />
             </el-select>
           </el-form-item>
@@ -188,18 +187,13 @@
                 <el-option label="gpt-4.1-mini" value="gpt-4.1-mini" />
               </el-option-group>
               <el-option-group label="DeepSeek">
-                <el-option label="deepseek-chat" value="deepseek-chat" />
-                <el-option label="deepseek-reasoner" value="deepseek-reasoner" />
+                <el-option label="deepseek-v4-flash" value="deepseek-v4-flash" />
+                <el-option label="deepseek-v4-pro" value="deepseek-v4-pro" />
               </el-option-group>
               <el-option-group label="Qwen">
                 <el-option label="qwen-plus" value="qwen-plus" />
                 <el-option label="qwen-turbo" value="qwen-turbo" />
                 <el-option label="qwen-max" value="qwen-max" />
-              </el-option-group>
-              <el-option-group label="智谱 GLM">
-                <el-option label="glm-5.1 (旗舰)" value="glm-5.1" />
-                <el-option label="glm-4.6" value="glm-4.6" />
-                <el-option label="glm-4.5-flash" value="glm-4.5-flash" />
               </el-option-group>
             </el-select>
           </el-form-item>
@@ -338,18 +332,18 @@ interface Preset {
 
 const presets: Preset[] = [
   {
-    label: '智谱 GLM-5.1',
-    provider: 'ZHIPU',
-    baseUrl: 'https://open.bigmodel.cn/api/coding/paas/v4',
-    modelName: 'glm-5.1',
-    configName: '智谱 GLM-5.1 主模型'
+    label: 'DeepSeek V4 Flash',
+    provider: 'DEEPSEEK',
+    baseUrl: 'https://api.deepseek.com',
+    modelName: 'deepseek-v4-flash',
+    configName: 'DeepSeek V4 Flash 主模型'
   },
   {
-    label: 'DeepSeek Chat',
+    label: 'DeepSeek V4 Pro',
     provider: 'DEEPSEEK',
-    baseUrl: 'https://api.deepseek.com/v1',
-    modelName: 'deepseek-chat',
-    configName: 'DeepSeek Chat'
+    baseUrl: 'https://api.deepseek.com',
+    modelName: 'deepseek-v4-pro',
+    configName: 'DeepSeek V4 Pro 高质量模型'
   },
   {
     label: 'OpenAI GPT-4o-mini',
@@ -369,10 +363,10 @@ const presets: Preset[] = [
 
 const emptyForm = (): LlmModelConfigItem => ({
   configName: '',
-  provider: 'OPENAI',
-  baseUrl: 'https://api.openai.com/v1',
+  provider: 'DEEPSEEK',
+  baseUrl: 'https://api.deepseek.com',
   apiKey: '',
-  modelName: 'gpt-4o-mini',
+  modelName: 'deepseek-v4-flash',
   temperature: 0.2,
   maxTokens: 8192,
   isDefault: false,
@@ -396,7 +390,6 @@ function providerIcon(p?: string): Component {
     OPENAI: Sparkles,
     DEEPSEEK: Cpu,
     QWEN: Bot,
-    ZHIPU: BrainIcon,
     CUSTOM: Globe
   }
   return map[p || ''] || Globe
@@ -722,7 +715,6 @@ onMounted(loadList)
 .provider-badge.p-openai   { color: var(--ok);     border-color: rgba(52, 211, 153, 0.4); }
 .provider-badge.p-deepseek { color: var(--accent); border-color: var(--accent-line); }
 .provider-badge.p-qwen     { color: var(--warn);   border-color: rgba(251, 191, 36, 0.4); }
-.provider-badge.p-zhipu    { color: var(--critical); border-color: rgba(251, 113, 133, 0.4); }
 .provider-badge.p-custom   { color: var(--text-muted); }
 
 .model-display {

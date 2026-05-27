@@ -828,6 +828,14 @@ onBeforeUnmount(() => {
   .hero-right { display: none; }
 }
 
+@media (max-width: 900px) {
+  .noc-btn {
+    position: static;
+    width: max-content;
+    margin-top: -4px;
+  }
+}
+
 /* ========== Main grid ========== */
 .main-grid {
   display: grid;
@@ -1108,4 +1116,31 @@ onBeforeUnmount(() => {
 }
 
 .link-more:hover { text-decoration: underline; text-underline-offset: 2px; }
+
+@media (max-width: 900px) {
+  .feed-item {
+    grid-template-columns: 64px 3px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .feed-line-1,
+  .feed-line-2 {
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+
+  .feed-title {
+    min-width: 0;
+  }
+
+  .feed-line-2 code {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .legend {
+    flex-wrap: wrap;
+  }
+}
 </style>

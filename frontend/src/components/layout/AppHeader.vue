@@ -20,8 +20,8 @@
       <el-dropdown trigger="click" @command="onDemoCmd">
         <button class="demo-btn">
           <Sparkles :size="13" :stroke-width="1.6" />
-          演示数据
-          <ChevronDown :size="12" :stroke-width="1.6" />
+          <span class="demo-label">演示数据</span>
+          <ChevronDown class="demo-chevron" :size="12" :stroke-width="1.6" />
         </button>
         <template #dropdown>
           <el-dropdown-menu>
@@ -105,10 +105,11 @@ async function onDemoCmd(cmd: string) {
   top: 0;
   z-index: 10;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 18px;
-  padding: 22px 28px 18px;
+  min-height: 72px;
+  padding: 12px 28px;
   background: var(--bg-base);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--line);
@@ -136,7 +137,7 @@ async function onDemoCmd(cmd: string) {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .eyebrow {
@@ -157,24 +158,30 @@ async function onDemoCmd(cmd: string) {
 .page-title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 500;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
+  line-height: 1.15;
   color: var(--text-primary);
 }
 
 .actions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 12px;
+  min-width: 0;
+  flex: 1;
 }
 
 .search-pill {
   display: flex;
   align-items: center;
   gap: 10px;
-  width: 380px;
-  padding: 9px 14px;
+  width: min(380px, 32vw);
+  min-width: 260px;
+  height: 36px;
+  padding: 0 14px;
   border: 1px solid var(--line-strong);
   border-radius: 999px;
   background: var(--bg-elev-1);
@@ -183,6 +190,13 @@ async function onDemoCmd(cmd: string) {
   font-family: var(--font-sans);
   font-size: 12px;
   transition: all 0.15s ease;
+}
+
+.search-pill span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .search-pill:hover {
@@ -252,5 +266,69 @@ async function onDemoCmd(cmd: string) {
 .conn-time {
   color: var(--text-muted);
   margin-left: 4px;
+}
+
+@media (max-width: 1280px) {
+  .search-pill {
+    width: 300px;
+    min-width: 220px;
+  }
+
+  .conn-time {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .app-header {
+    align-items: center;
+    gap: 10px;
+    min-height: 60px;
+    padding: 12px 14px;
+  }
+
+  .page-block {
+    min-width: 0;
+  }
+
+  .eyebrow-line {
+    display: none;
+  }
+
+  .page-title {
+    max-width: 9em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 18px;
+  }
+
+  .actions {
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .search-pill {
+    min-width: 0;
+    width: 36px;
+    height: 36px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .search-pill span,
+  .search-pill kbd,
+  .demo-label,
+  .demo-chevron,
+  .conn {
+    display: none;
+  }
+
+  .demo-btn {
+    width: 36px;
+    height: 36px;
+    justify-content: center;
+    padding: 0;
+  }
 }
 </style>

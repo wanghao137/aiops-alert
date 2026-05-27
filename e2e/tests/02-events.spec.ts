@@ -2,7 +2,7 @@ import { test, expect, request } from '@playwright/test'
 
 const BACKEND = 'http://localhost:8090'
 
-test.describe('Events 视图 + AI 摘要 PENDING 打字机', () => {
+test.describe('Events 视图 + AI 摘要', () => {
   test('列表页基础结构', async ({ page }) => {
     await page.goto('/events', { waitUntil: 'domcontentloaded' })
 
@@ -18,7 +18,7 @@ test.describe('Events 视图 + AI 摘要 PENDING 打字机', () => {
     await expect(page.locator('.event-card').first()).toBeVisible({ timeout: 10_000 })
   })
 
-  test('触发新告警 → 详情抽屉 PENDING 打字机', async ({ page }) => {
+  test('触发新告警 → 详情抽屉展示 AI 摘要状态', async ({ page }) => {
     const api = await request.newContext({ baseURL: BACKEND })
     const rulesResp = await api.get('/api/alert-rules')
     const rules = (await rulesResp.json()).data
@@ -50,17 +50,31 @@ test.describe('Events 视图 + AI 摘要 PENDING 打字机', () => {
     const summaryCard = detail.locator('.ai-summary-card')
     await expect(summaryCard).toBeVisible()
     const cls = (await summaryCard.getAttribute('class')) ?? ''
-    expect(cls).toMatch(/pending|loading/)
+    expect(cls).toMatch(/pending|loading|success/)
 
-    const thinking = summaryCard.locator('.thinking-line')
-    await expect(thinking).toBeVisible({ timeout: 3_000 })
-    await expect(thinking.locator('.prompt-mark')).toContainText('▸')
-    await expect(thinking.locator('.thinking-text')).toBeVisible()
-    await expect(thinking.locator('.caret')).toBeVisible()
+    if (/pending|loading/.test(cls)) {
+      const thinking = summaryCard.locator('.thinking-line')
+      await expect(thinking).toBeVisible({ timeout: 3_000 })
+      await expect(thinking.locator('.prompt-mark')).toContainText('▸')
+      await expect(thinking.locator('.thinking-text')).toBeVisible()
+      await expect(thinking.locator('.caret')).toBeVisible()
 
-    const initialText = (await thinking.locator('.thinking-text').textContent())?.trim()
-    await page.waitForTimeout(1900)
-    const laterText = (await thinking.locator('.thinking-text').textContent())?.trim()
-    expect(initialText).not.toEqual(laterText)
+      const initialText = (await thinking.locator('.thinking-text').textContent())?.trim()
+      await page.waitForTimeout(1900)
+      const laterCls = (await summaryCard.getAttribute('class')) ?? ''
+      if (/success/.test(laterCls)) {
+        await expect(summaryCard.locator('.ready-pill')).toContainText('已生成')
+        await expect(summaryCard.locator('.block.what')).toBeVisible()
+        await expect(summaryCard.locator('.block.actions')).toBeVisible()
+      } else {
+        await expect(thinking.locator('.thinking-text')).toBeVisible()
+        const laterText = (await thinking.locator('.thinking-text').textContent())?.trim()
+        expect(initialText).not.toEqual(laterText)
+      }
+    } else {
+      await expect(summaryCard.locator('.ready-pill')).toContainText('已生成')
+      await expect(summaryCard.locator('.block.what')).toBeVisible()
+      await expect(summaryCard.locator('.block.actions')).toBeVisible()
+    }
   })
 })

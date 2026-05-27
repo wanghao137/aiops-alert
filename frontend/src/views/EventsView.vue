@@ -659,12 +659,54 @@ onMounted(loadAll)
 @media (max-width: 1280px) {
   .layout,
   .layout.has-detail { grid-template-columns: 220px minmax(0, 1fr); }
-  .detail { display: none; }
+  .detail {
+    position: fixed;
+    top: 78px;
+    right: 14px;
+    bottom: 14px;
+    z-index: 80;
+    width: min(560px, calc(100vw - 28px));
+    max-height: none;
+    box-shadow:
+      var(--inset),
+      0 24px 80px -24px rgba(0, 0, 0, 0.68);
+  }
 }
 
 @media (max-width: 900px) {
   .layout,
   .layout.has-detail { grid-template-columns: 1fr; }
+
+  .side {
+    position: static;
+  }
+
+  .filters {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .filter-select,
+  .filter-input {
+    width: 100%;
+  }
+
+  .detail {
+    top: 70px;
+    right: 12px;
+    bottom: 78px;
+    left: 12px;
+    width: auto;
+    padding: 18px;
+  }
+
+  .kv-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .actions-bar {
+    flex-wrap: wrap;
+  }
 }
 
 /* 左侧 */

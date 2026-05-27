@@ -60,6 +60,11 @@ function onReconnect() {
 
 // Cmd+K / Ctrl+K 全局快捷键
 function onKeydown(e: KeyboardEvent) {
+  if (cmdStore.visible && e.key === 'Escape') {
+    e.preventDefault()
+    cmdStore.close()
+    return
+  }
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
     e.preventDefault()
     cmdStore.toggle()
@@ -92,6 +97,22 @@ onBeforeUnmount(() => {
 .app-content {
   flex: 1;
   overflow: auto;
+}
+
+@media (max-width: 900px) {
+  .app-shell {
+    display: block;
+    min-height: 100vh;
+  }
+
+  .app-main {
+    min-height: 100vh;
+    padding-bottom: 64px;
+  }
+
+  .app-content {
+    overflow: visible;
+  }
 }
 
 .fade-enter-active,

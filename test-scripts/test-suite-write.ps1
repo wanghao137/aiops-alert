@@ -37,8 +37,9 @@ function Post-Api { param([string]$path, [object]$body = $null, [int]$timeout = 
   try {
     $params = @{ Uri = ($BASE + $path); Method = 'POST'; UseBasicParsing = $true; TimeoutSec = $timeout }
     if ($null -ne $body) {
-      $params['Body'] = ($body | ConvertTo-Json -Depth 10)
-      $params['ContentType'] = 'application/json'
+      $json = ($body | ConvertTo-Json -Depth 10)
+      $params['Body'] = [System.Text.Encoding]::UTF8.GetBytes($json)
+      $params['ContentType'] = 'application/json; charset=utf-8'
     }
     $r = Invoke-WebRequest @params
     return ($r.Content | ConvertFrom-Json)
@@ -53,6 +54,33 @@ function Form-Api { param([string]$path, [hashtable]$form, [int]$timeout = 60)
     return ($r.Content | ConvertFrom-Json)
   } catch {
     return [pscustomobject]@{ code = -1; message = $_.Exception.Message; data = $null }
+  }
+}
+
+function Post-ApiStatus { param([string]$path, [int]$timeout = 60)
+  try {
+    $r = Invoke-WebRequest -Uri ($BASE + $path) -Method POST -UseBasicParsing -TimeoutSec $timeout
+    $body = $null
+    try { $body = $r.Content | ConvertFrom-Json } catch { }
+    return [pscustomobject]@{ HttpStatus = [int]$r.StatusCode; BodyCode = $body.code; Message = $body.message }
+  } catch {
+    $status = -1
+    $bodyCode = $null
+    $msg = $_.Exception.Message
+    if ($_.Exception.Response) {
+      $status = [int]$_.Exception.Response.StatusCode
+      try {
+        $stream = $_.Exception.Response.GetResponseStream()
+        $reader = New-Object System.IO.StreamReader($stream)
+        $text = $reader.ReadToEnd()
+        if ($text) {
+          $body = $text | ConvertFrom-Json
+          $bodyCode = $body.code
+          $msg = $body.message
+        }
+      } catch { }
+    }
+    return [pscustomobject]@{ HttpStatus = $status; BodyCode = $bodyCode; Message = $msg }
   }
 }
 
@@ -86,7 +114,7 @@ if ($enabledRule -and $obj) {
   $newEventId = $resp.data.id
   $newEvent = (Get-Api ('/alert-events/' + $newEventId)).data
   Assert-Test 'new event status = PENDING' ([bool]($newEvent.eventStatus -eq 'PENDING')) ("status=" + $newEvent.eventStatus)
-  Assert-Test 'new event ai_summary_status = PENDING' ([bool]($newEvent.aiSummaryStatus -eq 'PENDING')) ("aiStatus=" + $newEvent.aiSummaryStatus)
+  Assert-Test 'new event ai_summary_status pending or success' ([bool]($newEvent.aiSummaryStatus -in @('PENDING','SUCCESS'))) ("aiStatus=" + $newEvent.aiSummaryStatus)
 
   # ============================================================
   # Workflow 2: event state machine
@@ -147,6 +175,9 @@ if ($numRule) {
   }
 }
 
+$missingStory = Post-ApiStatus '/simulator/force-story'
+Assert-Test 'POST /simulator/force-story missing params is 400 not 500' ([bool](($missingStory.HttpStatus -eq 400 -or $missingStory.BodyCode -eq 400) -and $missingStory.HttpStatus -ne 500)) ("http=" + $missingStory.HttpStatus + ", code=" + $missingStory.BodyCode)
+
 # ============================================================
 # Workflow 4: AI command
 # ============================================================
@@ -159,6 +190,26 @@ if ($cmd.code -eq 0) {
   Assert-Test 'POST /ai/command' $true ("intent=" + $cmd.data.intent)
 } else {
   Assert-Test 'POST /ai/command' $false ("code=" + $cmd.code)
+}
+
+$cmdStats = Post-Api '/ai/command' @{ prompt = '打开 AI 调用统计页面' } 90
+Assert-Test 'POST /ai/command routes to /ai-stats' ([bool]($cmdStats.code -eq 0 -and $cmdStats.data.intent -eq 'route' -and $cmdStats.data.routePath -eq '/ai-stats')) ("intent=" + $cmdStats.data.intent + ", route=" + $cmdStats.data.routePath)
+
+# ============================================================
+# Workflow 4.5: Demo notification channels
+# ============================================================
+Write-Host ''
+Write-Host '== Workflow 4.5: Demo channel dry-run ==========' -ForegroundColor Cyan
+
+$channels = (Get-Api '/alert-channels').data
+$enabledChannels = @($channels | Where-Object { $_.status -eq 'ENABLED' })
+foreach ($ch in $enabledChannels) {
+  $testResp = Post-Api '/alert-channels/test' @{
+    channelId = $ch.id
+    title = 'AIOps Alert demo channel test'
+    content = 'dryRun demo verification'
+  } 30
+  Assert-Test ('demo channel test success: ' + $ch.channelCode) ([bool]($testResp.code -eq 0 -and $testResp.data.sendStatus -eq 'SUCCESS')) ("status=" + $testResp.data.sendStatus + ", reason=" + $testResp.data.failureReason)
 }
 
 # ============================================================

@@ -152,16 +152,11 @@ public class LlmModelConfigService {
             java.util.Map<String, Object> body = new java.util.HashMap<>();
             body.put("model", config.getModelName());
             body.put("temperature", 0.2);
-            // GLM-5.1/GLM-5/GLM-4.7 等模型强制思考(thinking compulsorily)，给小了 content 会为空
-            // 4096 留给思考 + 简短回答足够，最大耗时也可控
+            // 4096 留给思考 + 简短回答足够，最大耗时也可控。
             body.put("max_tokens", 4096);
             body.put("messages", java.util.List.of(
                     java.util.Map.of("role", "user", "content", "用 2 个字回答：你好")
             ));
-            // 思考类模型清理历史思考块（仅智谱端点支持，其他厂商会忽略）
-            if (config.getBaseUrl() != null && config.getBaseUrl().contains("bigmodel.cn")) {
-                body.put("thinking", java.util.Map.of("clear_thinking", true));
-            }
 
             org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
             headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
@@ -218,7 +213,7 @@ public class LlmModelConfigService {
             if (status == 401 || status == 403) {
                 hint = "认证失败：API Key 无效，或套餐已到期/未授权该 baseUrl";
             } else if (status == 404) {
-                hint = "端点不存在：检查 baseUrl 路径与模型名是否匹配（智谱 Coding Plan 用 /api/coding/paas/v4，普通用 /api/paas/v4）";
+                hint = "端点不存在：检查 baseUrl 路径与模型名是否匹配（DeepSeek 使用 https://api.deepseek.com）";
             } else if (status == 429) {
                 hint = "限流：请稍后重试或升级套餐";
             } else if (status >= 500) {

@@ -134,6 +134,7 @@
               <span class="channel-code">{{ item.channelCode }}</span>
               <span class="sep">·</span>
               <span class="type-label">{{ item.channelTypeName }}</span>
+              <span v-if="isDryRun(item)" class="demo-tag">演示</span>
             </div>
           </div>
           <span :class="['st-pill', item.status === 'ENABLED' ? 'on' : 'off']">
@@ -150,9 +151,9 @@
           <span class="val tabular-nums">{{ item.priority ?? 100 }}</span>
         </div>
 
-        <div class="last-send" :class="lastClass(item.lastSendStatus)">
+        <div class="last-send" :class="[lastClass(item.lastSendStatus), { demo: isDryRun(item) }]">
           <span class="ls-mark">▸</span>
-          <span class="ls-label">LAST</span>
+          <span class="ls-label">{{ isDryRun(item) ? 'DEMO' : 'LAST' }}</span>
           <span class="ls-text">{{ lastText(item) }}</span>
         </div>
 
@@ -491,9 +492,25 @@ function lastClass(status?: string) {
 
 function lastText(item: AlertChannelItem) {
   if (!item.lastSendStatus) return '尚未发送'
-  if (item.lastSendStatus === 'SUCCESS') return `成功 · ${item.lastSentAt || ''}`
+  if (isDryRun(item) && item.lastSendStatus === 'SUCCESS') return `演示成功 · 未真实发送${formatSendTime(item.lastSentAt) ? ' · ' + formatSendTime(item.lastSentAt) : ''}`
+  if (item.lastSendStatus === 'SUCCESS') return `成功 · ${formatSendTime(item.lastSentAt)}`
   if (item.lastSendStatus === 'FAILED') return `失败 · ${item.lastFailureReason || '未知原因'}`
   return item.lastSendStatus
+}
+
+function formatSendTime(t?: string) {
+  if (!t) return ''
+  return t.replace('T', ' ').slice(5, 16)
+}
+
+function isDryRun(item: AlertChannelItem) {
+  if ((item.description || '').toLowerCase().includes('dryrun')) return true
+  if (!item.configJson) return false
+  try {
+    return JSON.parse(item.configJson).dryRun === true
+  } catch {
+    return false
+  }
 }
 
 function hexToRgba(hex: string, alpha: number) {
@@ -850,6 +867,18 @@ onMounted(loadAll)
 .sep { color: var(--text-faint); }
 .type-label { color: var(--text-muted); }
 
+.demo-tag {
+  padding: 1px 7px;
+  border: 1px solid var(--accent-line);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+}
+
 .st-pill {
   display: inline-flex;
   align-items: center;
@@ -922,6 +951,11 @@ onMounted(loadAll)
   background: var(--danger-soft);
 }
 
+.last-send.demo {
+  border-left-color: var(--accent);
+  background: var(--accent-soft);
+}
+
 .last-send.idle { opacity: 0.7; }
 
 .ls-mark {
@@ -932,6 +966,7 @@ onMounted(loadAll)
 
 .last-send.ok .ls-mark { color: var(--ok); }
 .last-send.fail .ls-mark { color: var(--danger); }
+.last-send.demo .ls-mark { color: var(--accent); }
 
 .ls-label {
   color: var(--text-muted);
@@ -949,6 +984,7 @@ onMounted(loadAll)
 
 .last-send.ok .ls-text { color: var(--ok); }
 .last-send.fail .ls-text { color: var(--danger); }
+.last-send.demo .ls-text { color: var(--text-secondary); }
 
 .desc {
   margin: 0;
