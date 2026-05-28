@@ -64,7 +64,7 @@
               <Sparkles :size="13" />
             </button>
           </template>
-          <div class="reco-pop" v-loading="recoLoading">
+          <div class="reco-pop">
             <div class="reco-head">
               <Sparkles :size="13" />
               <span>AI 阈值推荐</span>
@@ -72,6 +72,13 @@
                 ? `基于近 7 天 ${reco.samples} 个样本`
                 : '基于经验值（暂无历史样本）' }}</small>
             </div>
+            <LiveThinkingStream
+              v-if="recoLoading"
+              :active="recoLoading"
+              scene="threshold"
+              :subject="curMetricName(idx)"
+              compact
+            />
             <div v-if="reco?.recommendations?.length" class="reco-list">
               <button
                 v-for="r in reco.recommendations"
@@ -134,6 +141,7 @@ import type { AlertRuleConditionItem } from '@/api/alertRule'
 import type { MetricItem } from '@/api/metricCatalog'
 import { useCatalogStore } from '@/stores/catalog'
 import { recommendThreshold, type ThresholdReco, type ThresholdRecoItem } from '@/api/threshold'
+import LiveThinkingStream from '@/components/ai/LiveThinkingStream.vue'
 
 const props = defineProps<{
   modelValue: AlertRuleConditionItem[]
@@ -176,6 +184,10 @@ function compareOpsFor(metricCode?: string) {
     return all.filter((op) => op.inputKind === 'state' || op.inputKind === 'any')
   }
   return all.filter((op) => op.inputKind === 'numeric' || op.inputKind === 'any')
+}
+
+function curMetricName(idx: number) {
+  return props.modelValue[idx]?.metricName || props.modelValue[idx]?.metricCode || ''
 }
 
 function onMetricChange(idx: number, code: string) {

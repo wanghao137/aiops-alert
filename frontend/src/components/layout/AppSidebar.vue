@@ -39,7 +39,7 @@
         <kbd>⌘ K</kbd>
       </button>
       <div class="version">
-        <span>BUILD</span>
+        <span>构建 BUILD</span>
         <span class="ver">{{ buildId }}</span>
       </div>
     </div>

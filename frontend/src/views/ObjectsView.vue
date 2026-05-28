@@ -4,7 +4,7 @@
     <section class="hero">
       <div class="hero-left">
         <div class="hero-eyebrow">
-          <span class="eyebrow">MONITOR OBJECTS</span>
+          <span class="eyebrow">监控对象 / OBJECTS</span>
           <span class="dot-anim" />
           <span class="hero-time">服务器 · 数据库 · 同步作业 · 加工作业</span>
         </div>
@@ -23,6 +23,9 @@
       </div>
 
       <div class="hero-right">
+        <button class="hero-action ai" @click="aiDialogVisible = true">
+          <SparklesIcon :size="13" :stroke-width="1.6" /> AI 智能配置
+        </button>
         <button class="hero-action ghost" @click="loadAll">
           <RefreshIcon :size="13" :stroke-width="1.6" /> 刷新
         </button>
@@ -31,6 +34,8 @@
         </button>
       </div>
     </section>
+
+    <AiObjectDialog v-model="aiDialogVisible" @apply="onAiDraftApply" />
 
     <!-- ========== 类型分布卡 ========== -->
     <section v-if="stats && stats.total > 0" class="type-overview">
@@ -187,6 +192,7 @@
       v-model="dialogVisible"
       :title="form.id ? '编辑监控对象' : '新增监控对象'"
       width="640px"
+      append-to-body
       :close-on-click-modal="false"
       class="object-dialog"
     >
@@ -254,7 +260,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { nextTick, onMounted, reactive, ref } from 'vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import {
   Plus as PlusIcon,
@@ -263,10 +269,12 @@ import {
   Edit3 as EditIcon,
   Power as PowerIcon,
   Trash2 as TrashIcon,
-  ServerCrash as ServerCrashIcon
+  ServerCrash as ServerCrashIcon,
+  Sparkles as SparklesIcon
 } from 'lucide-vue-next'
 import { OBJECT_TYPES, getObjectTypeMeta } from '@/utils/objectType'
 import SkeletonList from '@/components/common/SkeletonList.vue'
+import AiObjectDialog from '@/components/object/AiObjectDialog.vue'
 import {
   deleteMonitorObject,
   getMonitorObjectStats,
@@ -282,6 +290,7 @@ const stats = ref<MonitorObjectStats>()
 const loading = ref(false)
 const submitting = ref(false)
 const dialogVisible = ref(false)
+const aiDialogVisible = ref(false)
 const formRef = ref<FormInstance>()
 
 const filters = reactive({
@@ -310,11 +319,11 @@ const rules: FormRules = {
 }
 
 function countOf(type: string) {
-  return stats.value?.byType.find((t) => t.objectType === type)?.total ?? 0
+  return stats.value?.byType?.find((t) => t.objectType === type)?.total ?? 0
 }
 
 function countEnabledOf(type: string) {
-  return stats.value?.byType.find((t) => t.objectType === type)?.enabled ?? 0
+  return stats.value?.byType?.find((t) => t.objectType === type)?.enabled ?? 0
 }
 
 async function loadList() {
@@ -350,6 +359,17 @@ function openCreate() {
 
 function openEdit(item: MonitorObjectItem) {
   Object.assign(form, emptyForm(), item)
+  dialogVisible.value = true
+}
+
+async function onAiDraftApply(draft: MonitorObjectItem) {
+  Object.assign(form, emptyForm(), {
+    ...draft,
+    status: draft.status || 'ENABLED'
+  })
+  aiDialogVisible.value = false
+  dialogVisible.value = false
+  await nextTick()
   dialogVisible.value = true
 }
 
@@ -506,6 +526,18 @@ onMounted(loadAll)
 .hero-action.ghost:hover {
   border-color: var(--accent-line);
   color: var(--accent);
+}
+
+.hero-action.ai {
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+  color: var(--accent);
+}
+
+.hero-action.ai:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg-base);
 }
 
 .hero-action.primary {

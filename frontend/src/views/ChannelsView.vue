@@ -4,7 +4,7 @@
     <section class="hero">
       <div class="hero-left">
         <div class="hero-eyebrow">
-          <span class="eyebrow">ALERT CHANNELS</span>
+          <span class="eyebrow">通知渠道 / CHANNELS</span>
           <span class="dot-anim" />
           <span class="hero-time">企业微信 · 邮件 · 短信</span>
         </div>
@@ -33,14 +33,14 @@
     <section class="stat-bar">
       <article class="stat-cell">
         <div class="stat-head">
-          <span class="eyebrow inline">TOTAL CHANNELS</span>
+          <span class="eyebrow inline">渠道总数 / TOTAL</span>
         </div>
         <div class="stat-num tabular-nums">{{ stats?.total ?? 0 }}</div>
         <div class="stat-meta">启用 {{ stats?.enabled ?? 0 }} · 停用 {{ (stats?.total ?? 0) - (stats?.enabled ?? 0) }}</div>
       </article>
       <article class="stat-cell ok">
         <div class="stat-head">
-          <span class="eyebrow inline">DELIVERED · TODAY</span>
+          <span class="eyebrow inline">今日成功 / DELIVERED</span>
           <CheckIcon :size="13" :stroke-width="1.7" />
         </div>
         <div class="stat-num tabular-nums">{{ stats?.sentToday ?? 0 }}</div>
@@ -48,7 +48,7 @@
       </article>
       <article class="stat-cell danger">
         <div class="stat-head">
-          <span class="eyebrow inline">FAILED · TODAY</span>
+          <span class="eyebrow inline">今日失败 / FAILED</span>
           <AlertIcon :size="13" :stroke-width="1.7" />
         </div>
         <div class="stat-num tabular-nums">{{ stats?.failedToday ?? 0 }}</div>
@@ -153,7 +153,7 @@
 
         <div class="last-send" :class="[lastClass(item.lastSendStatus), { demo: isDryRun(item) }]">
           <span class="ls-mark">▸</span>
-          <span class="ls-label">{{ isDryRun(item) ? 'DEMO' : 'LAST' }}</span>
+          <span class="ls-label">{{ isDryRun(item) ? '演示 DEMO' : '最近 LAST' }}</span>
           <span class="ls-text">{{ lastText(item) }}</span>
         </div>
 

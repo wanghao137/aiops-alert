@@ -39,11 +39,16 @@ export const useRealtimeStore = defineStore('realtime', () => {
     if (idx >= 0) recentEvents.value[idx] = { ...recentEvents.value[idx], ...ev }
   }
 
-  function applySummary(eventId: number, summary?: string) {
+  function applySummary(eventId: number, summary?: string, status = 'SUCCESS', reasoning?: string) {
     aiSummaryUpdates.value += 1
     const idx = recentEvents.value.findIndex((e) => e.id === eventId)
     if (idx >= 0) {
-      recentEvents.value[idx] = { ...recentEvents.value[idx], aiSummary: summary, aiSummaryStatus: 'SUCCESS' }
+      recentEvents.value[idx] = {
+        ...recentEvents.value[idx],
+        aiSummary: summary,
+        aiSummaryStatus: status,
+        aiReasoning: reasoning
+      }
     }
   }
 

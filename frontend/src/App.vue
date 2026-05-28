@@ -46,8 +46,8 @@ const { connected, reconnect } = useSse((event, data) => {
     return
   }
   if (event === 'ai-summary') {
-    const d = data as { eventId: number; status: string; summary?: string }
-    realtime.applySummary(d.eventId, d.summary)
+    const d = data as { eventId: number; status: string; summary?: string; reasoning?: string }
+    realtime.applySummary(d.eventId, d.summary, d.status, d.reasoning)
     return
   }
 })

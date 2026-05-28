@@ -4,7 +4,7 @@
       <div class="left">
         <span class="brand">
           <Sparkles :size="11" :stroke-width="1.8" />
-          AI BRIEF
+          AI 简报
         </span>
         <span class="cov">{{ brief?.coverageDate || '—' }}</span>
         <span v-if="brief?.status === 'FALLBACK'" class="warn-pill">无 LLM · 模板</span>
@@ -25,11 +25,12 @@
       </div>
     </header>
 
-    <div v-if="loading" class="narrative-loading">
-      <span class="prompt-mark">▸</span>
-      <span class="thinking-text">{{ thinkingText }}</span>
-      <span class="caret" />
-    </div>
+    <LiveThinkingStream
+      v-if="loading"
+      :active="loading"
+      scene="daily-brief"
+      compact
+    />
     <div v-else class="narrative">
       <span class="prompt-mark">▸</span>
       <span>{{ brief?.narrative || '尚未生成今日简报' }}</span>
@@ -37,33 +38,33 @@
 
     <div v-if="brief?.snapshot" class="snap-row">
       <div class="snap-cell">
-        <span class="lbl">EVENTS</span>
+        <span class="lbl">事件 EVENTS</span>
         <strong class="val tabular-nums">{{ brief.snapshot.totalEvents }}</strong>
       </div>
       <div class="snap-cell critical">
-        <span class="lbl">CRITICAL</span>
+        <span class="lbl">紧急 CRITICAL</span>
         <strong class="val tabular-nums">{{ brief.snapshot.criticalEvents }}</strong>
       </div>
       <div class="snap-cell">
-        <span class="lbl">PENDING</span>
+        <span class="lbl">待处理 PENDING</span>
         <strong class="val tabular-nums">{{ brief.snapshot.pendingEvents }}</strong>
       </div>
       <div class="snap-cell ok">
-        <span class="lbl">RECOVERED</span>
+        <span class="lbl">已恢复 RECOVERED</span>
         <strong class="val tabular-nums">{{ brief.snapshot.recoveredEvents }}</strong>
       </div>
       <div class="snap-cell">
-        <span class="lbl">INCIDENTS</span>
+        <span class="lbl">故障组 INCIDENTS</span>
         <strong class="val tabular-nums">{{ brief.snapshot.openIncidents }}</strong>
       </div>
       <div class="snap-cell" :class="{ warn: brief.snapshot.notifyFailed > 0 }">
-        <span class="lbl">NOTIFY FAIL</span>
+        <span class="lbl">通知失败</span>
         <strong class="val tabular-nums">{{ brief.snapshot.notifyFailed }}</strong>
       </div>
     </div>
 
     <div v-if="brief?.highlights?.length" class="highlights">
-      <div class="hl-eyebrow">HIGHLIGHTS · TOP {{ brief.highlights.length }}</div>
+      <div class="hl-eyebrow">重点事件 · TOP {{ brief.highlights.length }}</div>
       <div class="hl-list">
         <article v-for="h in brief.highlights" :key="h.id" class="hl-row" @click="goEvent(h.id)">
           <span class="hl-bar" :style="{ background: levelColor(h.alertLevel) }" />
@@ -89,11 +90,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Sparkles, RefreshCw, ArrowUp, ArrowDown, Minus } from 'lucide-vue-next'
 import { getDailyBrief, refreshDailyBrief, type DailyBrief } from '@/api/dailyBrief'
 import { getAlertLevelMeta } from '@/utils/alertLevel'
+import LiveThinkingStream from '@/components/ai/LiveThinkingStream.vue'
 
 const brief = ref<DailyBrief | null>(null)
 const loading = ref(false)
@@ -104,39 +106,6 @@ const status = computed(() => {
   if (loading.value) return 'loading'
   if (!brief.value) return 'empty'
   return brief.value.status?.toLowerCase() || 'success'
-})
-
-// 终端打字机思考效果（refresh 时用）
-const THINKING_MESSAGES = [
-  '汇总昨日告警数据…',
-  '识别异常对象与场景…',
-  '生成态势叙述…',
-  '组装重点事件清单…'
-]
-const thinkingText = ref(THINKING_MESSAGES[0])
-let thinkingIdx = 0
-let thinkingTimer: ReturnType<typeof setInterval> | undefined
-
-function startThinking() {
-  if (thinkingTimer) return
-  thinkingIdx = 0
-  thinkingText.value = THINKING_MESSAGES[0]
-  thinkingTimer = setInterval(() => {
-    thinkingIdx = (thinkingIdx + 1) % THINKING_MESSAGES.length
-    thinkingText.value = THINKING_MESSAGES[thinkingIdx]
-  }, 1500)
-}
-
-function stopThinking() {
-  if (thinkingTimer) {
-    clearInterval(thinkingTimer)
-    thinkingTimer = undefined
-  }
-}
-
-watch(loading, (v) => {
-  if (v) startThinking()
-  else stopThinking()
 })
 
 async function load() {
@@ -201,7 +170,6 @@ function goEvent(id: number) {
 }
 
 onMounted(load)
-onBeforeUnmount(stopThinking)
 </script>
 
 <style scoped>

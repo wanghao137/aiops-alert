@@ -141,6 +141,7 @@ public class EventSummaryService {
         data.put("eventId", event.getId());
         data.put("status", event.getAiSummaryStatus());
         data.put("summary", event.getAiSummary());
+        data.put("reasoning", event.getAiReasoning());
         streamService.broadcast("ai-summary", data);
     }
 

@@ -4,7 +4,7 @@
     <section class="hero">
       <div class="hero-left">
         <div class="hero-eyebrow">
-          <span class="eyebrow">SITUATIONAL OVERVIEW</span>
+          <span class="eyebrow">态势总览 / SITUATION</span>
           <span class="dot-anim" />
           <span class="hero-time">{{ now }}</span>
         </div>
@@ -61,7 +61,7 @@
       <div class="kpi-card">
         <div class="kpi-eyebrow"><span class="dot warn" />紧急</div>
         <div class="kpi-value tabular-nums">{{ formatNum(data?.criticalEventTotal) }}</div>
-        <div class="kpi-foot">CRITICAL 级别</div>
+        <div class="kpi-foot">紧急 CRITICAL 级别</div>
       </div>
       <div class="kpi-card">
         <div class="kpi-eyebrow"><span class="dot ok" />已恢复</div>
@@ -93,7 +93,7 @@
       <div class="panel-block trend">
         <div class="panel-title-row">
           <div>
-            <div class="eyebrow">7-DAY TIMELINE</div>
+            <div class="eyebrow">7 日趋势 / TIMELINE</div>
             <h3 class="panel-h">告警事件时序</h3>
           </div>
           <div class="legend">
@@ -109,7 +109,7 @@
       <!-- 状态分布 ring -->
       <div class="panel-block">
         <div>
-          <div class="eyebrow">STATUS</div>
+          <div class="eyebrow">事件状态 / STATUS</div>
           <h3 class="panel-h">事件状态分布</h3>
         </div>
         <div ref="statusRef" class="chart small"></div>
@@ -118,7 +118,7 @@
       <!-- 级别分布 ring -->
       <div class="panel-block">
         <div>
-          <div class="eyebrow">SEVERITY</div>
+          <div class="eyebrow">告警级别 / SEVERITY</div>
           <h3 class="panel-h">告警级别分布</h3>
         </div>
         <div ref="levelRef" class="chart small"></div>
@@ -128,7 +128,7 @@
       <div class="panel-block hits">
         <div class="panel-title-row">
           <div>
-            <div class="eyebrow">RULE HIT TOP</div>
+            <div class="eyebrow">规则命中 TOP</div>
             <h3 class="panel-h">命中规则排行 · 近 7 天</h3>
           </div>
         </div>
@@ -153,7 +153,7 @@
       <!-- 对象类型分布 -->
       <div class="panel-block">
         <div>
-          <div class="eyebrow">SOURCE</div>
+          <div class="eyebrow">告警来源 / SOURCE</div>
           <h3 class="panel-h">告警来源分布</h3>
         </div>
         <div class="dist-list">
@@ -180,7 +180,7 @@
       <div class="panel-block recent">
         <div class="panel-title-row">
           <div>
-            <div class="eyebrow">RECENT FEED</div>
+            <div class="eyebrow">最近事件 / FEED</div>
             <h3 class="panel-h">最近事件</h3>
           </div>
           <button class="link-more" @click="$router.push('/events')">
@@ -423,7 +423,7 @@ function renderRing(el: HTMLDivElement | undefined, kind: 'status' | 'level',
       label: {
         show: true,
         position: 'center',
-        formatter: () => `{n|${total}}\n{l|TOTAL}`,
+        formatter: () => `{n|${total}}\n{l|总计}`,
         rich: {
           n: { fontFamily: 'Space Grotesk', fontSize: 22, fontWeight: 500, color: textPrimary, lineHeight: 24 },
           l: { fontFamily: 'JetBrains Mono', fontSize: 9, color: textMuted, letterSpacing: 2 }

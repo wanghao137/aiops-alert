@@ -1,9 +1,10 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { apiUrl } from '@/api/base'
 
 export type SseHandler = (event: string, data: unknown) => void
 
 /**
- * 订阅后端 SSE。后端固定路径 /api/stream/alerts，事件类型：
+ * 订阅后端 SSE。默认路径 /api/stream/alerts；部署到 Pages 时可用 VITE_API_BASE_URL 指向外部后端。
  *  - connected
  *  - ping              心跳（20s 一次）
  *  - event-created     新告警事件
@@ -33,7 +34,7 @@ export function useSse(handler: SseHandler) {
 
   function connect() {
     closeQuietly()
-    es = new EventSource('/api/stream/alerts')
+    es = new EventSource(apiUrl('/stream/alerts'))
     es.onopen = () => {
       connected.value = true
       lastMessageAt = Date.now()

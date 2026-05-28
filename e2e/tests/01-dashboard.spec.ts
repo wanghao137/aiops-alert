@@ -6,7 +6,7 @@ test.describe('Dashboard 总览大屏', () => {
   })
 
   test('Hero + KPI + 7 日趋势加载完成', async ({ page }) => {
-    await expect(page.locator('.hero .eyebrow').first()).toContainText('SITUATIONAL OVERVIEW')
+    await expect(page.locator('.hero .eyebrow').first()).toContainText('态势总览')
 
     const heroNum = page.locator('.hero-num').first()
     await expect(heroNum).toBeVisible()
@@ -25,7 +25,7 @@ test.describe('Dashboard 总览大屏', () => {
     const card = page.locator('.brief-card')
     await expect(card).toBeVisible({ timeout: 30_000 })
 
-    await expect(card.locator('.brand')).toContainText('AI BRIEF')
+    await expect(card.locator('.brand')).toContainText('AI 简报')
 
     const narrative = card.locator('.narrative')
     await expect(narrative).toBeVisible()
@@ -43,12 +43,12 @@ test.describe('Dashboard 总览大屏', () => {
   test('点击刷新简报 → 进入 thinking 状态', async ({ page }) => {
     const card = page.locator('.brief-card')
     await expect(card).toBeVisible()
+    await expect(page.locator('.dashboard-v .el-loading-mask')).toBeHidden({ timeout: 30_000 })
     await card.locator('.refresh').click()
 
-    const loading = card.locator('.narrative-loading')
+    const loading = card.locator('.live-thinking-stream')
     await expect(loading).toBeVisible({ timeout: 3_000 })
-    await expect(loading.locator('.thinking-text')).toBeVisible()
-    await expect(loading.locator('.caret')).toBeVisible()
+    await expect(loading).toContainText('实时思考流')
 
     await expect(card.locator('.refresh')).toContainText(/生成中|刷新简报/)
   })

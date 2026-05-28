@@ -4,7 +4,7 @@
     <section class="hero">
       <div class="hero-left">
         <div class="hero-eyebrow">
-          <span class="eyebrow">ALERT RULES</span>
+          <span class="eyebrow">告警规则 / RULES</span>
           <span class="dot-anim" />
           <span class="hero-time">差异化触发 · 多对象绑定 · AI 一句话建规则</span>
         </div>
@@ -38,7 +38,7 @@
         <div class="ai-left">
           <div class="ai-eyebrow">
             <Sparkles :size="11" :stroke-width="1.8" />
-            <span>AI BUILDER · BETA</span>
+            <span>AI 建规则 · BETA</span>
           </div>
           <div class="ai-title">用一句话描述你的告警需求</div>
           <div class="ai-terminal">
@@ -61,7 +61,7 @@
 
     <!-- ========== 级别分布条 ========== -->
     <section v-if="stats && stats.total > 0" class="level-bar-row">
-      <div class="eyebrow inline">LEVEL DISTRIBUTION</div>
+      <div class="eyebrow inline">级别分布 / LEVEL</div>
       <div class="level-track">
         <div
           v-for="lv in stats.byLevel"
@@ -202,6 +202,7 @@
       v-model="dialogVisible"
       :title="form.id ? '编辑告警规则' : '新增告警规则'"
       width="820px"
+      append-to-body
       :close-on-click-modal="false"
       class="rule-dialog"
     >
@@ -414,7 +415,7 @@
 
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import {
   Plus as PlusIcon,
@@ -668,7 +669,7 @@ function onAiClick() {
   aiDialogVisible.value = true
 }
 
-function onAiDraftApply(draft: AlertRuleItem) {
+async function onAiDraftApply(draft: AlertRuleItem) {
   Object.assign(form, emptyForm(), {
     ...draft,
     status: draft.status || 'ENABLED'
@@ -676,6 +677,9 @@ function onAiDraftApply(draft: AlertRuleItem) {
   if (!form.conditions?.length) {
     initConditionsForType(form.objectType)
   }
+  aiDialogVisible.value = false
+  dialogVisible.value = false
+  await nextTick()
   dialogVisible.value = true
 }
 

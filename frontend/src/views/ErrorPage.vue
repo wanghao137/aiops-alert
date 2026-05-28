@@ -8,7 +8,7 @@
         <span class="term-name">aiops:error</span>
         <span class="term-status">
           <span class="dot-anim" />
-          {{ variant === '404' ? 'NOT-FOUND' : 'INTERNAL-ERROR' }}
+          {{ variant === '404' ? '未找到 NOT-FOUND' : '内部错误 INTERNAL-ERROR' }}
         </span>
       </div>
       <div class="term-body">
@@ -60,9 +60,9 @@ const resolvedMessage = computed(() => {
 
 const traceText = computed(() => {
   if (props.variant === '404') {
-    return 'route resolution failed: no matching record'
+    return '路由解析失败：没有匹配页面'
   }
-  return 'http upstream returned status ≥ 500'
+  return '后端接口返回 500 或更高状态码'
 })
 
 function goHome() {

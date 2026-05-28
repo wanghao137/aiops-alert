@@ -50,8 +50,8 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/ai-stats',
     name: 'ai-stats',
-    component: () => import('@/views/AiStatsView.vue'),
-    meta: { title: 'AI 调用统计', icon: 'Activity' }
+    redirect: { path: '/settings', query: { tab: 'ai-stats' } },
+    meta: { title: 'AI 调用统计', hideInSidebar: true }
   },
   {
     path: '/:pathMatch(.*)*',

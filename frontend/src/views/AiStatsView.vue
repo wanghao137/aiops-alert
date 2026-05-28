@@ -1,11 +1,11 @@
 <template>
   <ErrorPage v-if="error500" variant="500" :on-retry="loadAll" />
-  <div v-else class="ai-stats-v">
+  <div v-else class="ai-stats-v" :class="{ embedded }">
     <!-- ========== HERO ========== -->
     <section class="hero">
       <div class="hero-left">
         <div class="hero-eyebrow">
-          <span class="eyebrow">AI ENGINEERING</span>
+          <span class="eyebrow">AI 调用统计 / USAGE</span>
           <span class="dot-anim" />
           <span class="hero-time">大模型用量 · 成本 · 健康度</span>
         </div>
@@ -42,17 +42,17 @@
     <!-- ========== Hero KPI ========== -->
     <section class="kpi-row">
       <div class="kpi-card">
-        <div class="kpi-eyebrow"><span class="dot accent" />TOKEN · TODAY</div>
+        <div class="kpi-eyebrow"><span class="dot accent" />今日用量 / TOKENS</div>
         <div class="kpi-value tabular-nums">{{ formatNum(overview?.todayTokenTotal) }}</div>
-        <div class="kpi-foot">prompt + completion</div>
+        <div class="kpi-foot">提示词 + 回复</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-eyebrow"><span class="dot ok" />SUCCESS RATE</div>
+        <div class="kpi-eyebrow"><span class="dot ok" />成功率 / SUCCESS</div>
         <div class="kpi-value tabular-nums">{{ formatPct(overview?.todaySuccessRate) }}</div>
-        <div class="kpi-foot">SUCCESS / 全部今日调用</div>
+        <div class="kpi-foot">成功调用 / 全部今日调用</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-eyebrow"><span class="dot warn" />COST · TODAY</div>
+        <div class="kpi-eyebrow"><span class="dot warn" />今日成本 / COST</div>
         <div class="kpi-value tabular-nums">¥{{ formatMoney(overview?.todayCost) }}</div>
         <div class="kpi-foot">本月累计 ¥{{ formatMoney(overview?.monthCost) }}</div>
       </div>
@@ -63,7 +63,7 @@
       <div class="panel-block">
         <div class="panel-title-row">
           <div>
-            <div class="eyebrow">SCENE DISTRIBUTION</div>
+            <div class="eyebrow">场景分布 / SCENE</div>
             <h3 class="panel-h">今日场景分布</h3>
           </div>
           <div class="legend">
@@ -79,7 +79,7 @@
       <div class="panel-block">
         <div class="panel-title-row">
           <div>
-            <div class="eyebrow">7-DAY TIMELINE</div>
+            <div class="eyebrow">7 日趋势 / TIMELINE</div>
             <h3 class="panel-h">近 7 天调用趋势</h3>
           </div>
         </div>
@@ -91,7 +91,7 @@
     <section class="panel-block slow-card">
       <div class="panel-title-row">
         <div>
-          <div class="eyebrow">SLOW CALLS · TOP 10 · 7D</div>
+          <div class="eyebrow">慢调用 TOP 10 / 7D</div>
           <h3 class="panel-h">慢调用排行</h3>
         </div>
       </div>
@@ -131,11 +131,11 @@
               <td colspan="6">
                 <div v-if="expandedDetail" class="payload-grid">
                   <div class="payload">
-                    <div class="payload-head">REQUEST</div>
+                    <div class="payload-head">请求 REQUEST</div>
                     <pre>{{ expandedDetail.requestPayload || '（无）' }}</pre>
                   </div>
                   <div class="payload">
-                    <div class="payload-head">RESPONSE</div>
+                    <div class="payload-head">响应 RESPONSE</div>
                     <pre>{{ expandedDetail.responsePayload || '（无）' }}</pre>
                   </div>
                 </div>
@@ -161,7 +161,7 @@
     <section class="panel-block log-list">
       <div class="panel-title-row">
         <div>
-          <div class="eyebrow">CALL LOG · {{ logsPage.total }}</div>
+          <div class="eyebrow">调用流水 / LOG · {{ logsPage.total }}</div>
           <h3 class="panel-h">AI 调用流水</h3>
         </div>
         <div class="filters">
@@ -202,7 +202,7 @@
             </td>
             <td class="model">{{ log.modelName || '-' }}</td>
             <td>
-              <span class="st-pill" :class="log.status === 'SUCCESS' ? 'ok' : 'fail'">{{ log.status }}</span>
+              <span class="st-pill" :class="log.status === 'SUCCESS' ? 'ok' : 'fail'">{{ callStatusLabel(log.status) }}</span>
             </td>
             <td class="num tabular-nums">{{ log.durationMs ?? '-' }}</td>
             <td class="num tabular-nums">{{ log.promptTokens ?? '-' }}</td>
@@ -240,7 +240,7 @@
       <div v-if="detail" class="drawer-content">
         <div class="drawer-head">
           <div>
-            <div class="eyebrow">CALL #{{ detail.id }} · {{ detail.scene }}</div>
+            <div class="eyebrow">调用 #{{ detail.id }} · {{ detail.scene }}</div>
             <h3 class="drawer-title">{{ detail.modelName || '未知模型' }}</h3>
           </div>
           <button class="close" @click="detailVisible = false">
@@ -252,7 +252,7 @@
           <div class="meta-cell">
             <span class="lbl">状态</span>
             <span class="val">
-              <span class="st-pill" :class="detail.status === 'SUCCESS' ? 'ok' : 'fail'">{{ detail.status }}</span>
+              <span class="st-pill" :class="detail.status === 'SUCCESS' ? 'ok' : 'fail'">{{ callStatusLabel(detail.status) }}</span>
             </span>
           </div>
           <div class="meta-cell">
@@ -283,17 +283,17 @@
         </div>
 
         <div class="payload-section">
-          <div class="payload-head">REQUEST</div>
+          <div class="payload-head">请求 REQUEST</div>
           <pre>{{ detail.requestPayload || '（无）' }}</pre>
         </div>
 
         <div class="payload-section">
-          <div class="payload-head">RESPONSE</div>
+          <div class="payload-head">响应 RESPONSE</div>
           <pre>{{ detail.responsePayload || '（无）' }}</pre>
         </div>
 
         <div v-if="detail.reasoningContent" class="payload-section">
-          <div class="payload-head">REASONING</div>
+          <div class="payload-head">推理 REASONING</div>
           <pre>{{ detail.reasoningContent }}</pre>
         </div>
       </div>
@@ -313,6 +313,10 @@ import {
 import { useThemeStore } from '@/stores/theme'
 import SkeletonList from '@/components/common/SkeletonList.vue'
 import ErrorPage from '@/views/ErrorPage.vue'
+
+withDefaults(defineProps<{ embedded?: boolean }>(), {
+  embedded: false
+})
 
 const SCENE_OPTIONS = [
   { value: 'NL2RULE', label: 'NL2Rule 建规则' },
@@ -422,7 +426,7 @@ function renderSceneRing() {
       label: {
         show: true,
         position: 'center',
-        formatter: () => `{n|${total}}\n{l|TODAY CALLS}`,
+        formatter: () => `{n|${total}}\n{l|今日调用}`,
         rich: {
           n: { fontFamily: 'Space Grotesk', fontSize: 22, fontWeight: 500, color: textPrimary, lineHeight: 24 },
           l: { fontFamily: 'JetBrains Mono', fontSize: 9, color: textMuted, letterSpacing: 2 }
@@ -603,6 +607,10 @@ function formatTime(t?: string) {
   return t ? dayjs(t).format('MM-DD HH:mm:ss') : '-'
 }
 
+function callStatusLabel(status?: string) {
+  return status === 'SUCCESS' ? '成功' : status === 'FAILED' ? '失败' : status || '-'
+}
+
 // ---------------- 环比指示组件 ----------------
 const Delta = defineComponent({
   props: {
@@ -674,6 +682,10 @@ watch(() => [filters.scene, filters.status, filters.modelName], () => {
   gap: 22px;
   padding: 0 28px 32px;
   animation: fade-up 0.35s ease both;
+}
+
+.ai-stats-v.embedded {
+  padding: 0;
 }
 
 /* ========== HERO ========== */

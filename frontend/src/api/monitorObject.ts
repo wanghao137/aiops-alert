@@ -35,6 +35,15 @@ export interface MonitorObjectQuery {
   status?: string
 }
 
+export interface MonitorObjectDraftResponse {
+  draft: MonitorObjectItem
+  understanding?: string
+  warnings?: string[]
+  durationMs?: number
+  modelName?: string
+  reasoning?: string
+}
+
 export function listMonitorObjects(query: MonitorObjectQuery = {}) {
   return http.get<MonitorObjectItem[]>('/monitor-objects', { params: query })
 }
@@ -57,4 +66,12 @@ export function deleteMonitorObject(id: number) {
 
 export function getMonitorObjectStats() {
   return http.get<MonitorObjectStats>('/monitor-objects/stats')
+}
+
+export function checkMonitorObjectAiAvailability() {
+  return http.get<boolean>('/ai/objects/availability')
+}
+
+export function draftMonitorObject(prompt: string) {
+  return http.post<MonitorObjectDraftResponse>('/ai/objects/draft', { prompt })
 }

@@ -10,7 +10,7 @@
           <span class="term-name">aiops:command</span>
           <span class="term-status">
             <span class="dot-anim" />
-            {{ loading ? 'THINKING' : 'READY' }}
+            {{ loading ? '思考中' : '就绪' }}
           </span>
           <button class="close" @click="close"><X :size="13" :stroke-width="1.8" /></button>
         </header>
@@ -40,7 +40,7 @@
 
         <!-- ========== Suggestions ========== -->
         <div v-if="!result && !loading" class="body suggestions">
-          <div class="eyebrow">QUICK COMMANDS</div>
+          <div class="eyebrow">快捷命令</div>
           <button
             v-for="(s, i) in suggestions"
             :key="s.text"
@@ -58,12 +58,21 @@
           </button>
         </div>
 
+        <!-- ========== Live thinking ========== -->
+        <div v-if="loading" class="body live-body">
+          <LiveThinkingStream
+            :active="loading"
+            scene="command"
+            :subject="prompt"
+          />
+        </div>
+
         <!-- ========== Result ========== -->
         <div v-if="result" class="body result">
           <div class="result-head">
             <div class="ans-mark">
               <Bot :size="13" :stroke-width="1.8" />
-              <span>ANSWER</span>
+              <span>回答</span>
             </div>
             <div class="ans-text">{{ result.answer }}</div>
             <div class="ans-meta">
@@ -103,7 +112,7 @@
           </div>
 
           <div v-if="result.events?.length" class="event-list">
-            <div class="eyebrow inline">MATCHING EVENTS · {{ result.events.length }}</div>
+            <div class="eyebrow inline">匹配事件 · {{ result.events.length }}</div>
             <button
               v-for="ev in result.events"
               :key="ev.id"
@@ -138,7 +147,7 @@
           <span><kbd>Enter</kbd> 执行</span>
           <span><kbd>Esc</kbd> 关闭</span>
           <span class="spacer" />
-          <span class="brand">AIOPS · COMMAND</span>
+          <span class="brand">AIOPS · 命令</span>
         </footer>
       </div>
     </div>
@@ -154,6 +163,7 @@ import {
 } from 'lucide-vue-next'
 import { runCommand, type CommandResult } from '@/api/command'
 import { getAlertLevelMeta } from '@/utils/alertLevel'
+import LiveThinkingStream from '@/components/ai/LiveThinkingStream.vue'
 import ThinkingPanel from '@/components/ai/ThinkingPanel.vue'
 
 const props = defineProps<{ modelValue: boolean }>()
@@ -178,8 +188,8 @@ interface Suggestion {
 
 const suggestions: Suggestion[] = [
   { text: '现在哪些对象在告警？', hint: '查询所有待处理事件', icon: BellRing },
-  { text: '今天有多少紧急告警', hint: '统计 CRITICAL 级别事件', icon: Flame },
-  { text: '打开总览大屏', hint: '跳转到 Dashboard', icon: LayoutDashboard },
+  { text: '今天有多少紧急告警', hint: '统计紧急级别事件', icon: Flame },
+  { text: '打开总览大屏', hint: '跳转到总览页', icon: LayoutDashboard },
   { text: '查看通知渠道', hint: '跳转到渠道页', icon: Send },
   { text: '系统设置', hint: '跳转到 LLM / 设置页', icon: Settings }
 ]

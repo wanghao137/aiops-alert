@@ -23,7 +23,7 @@ export const useThemeStore = defineStore('theme', () => {
 
   function readStored(): ThemeMode {
     const v = localStorage.getItem(STORAGE_KEY)
-    return v === 'dark' || v === 'light' || v === 'system' ? v : 'dark'
+    return v === 'dark' || v === 'light' || v === 'system' ? v : 'system'
   }
 
   function setMode(next: ThemeMode) {

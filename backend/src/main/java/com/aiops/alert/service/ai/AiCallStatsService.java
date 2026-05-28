@@ -40,7 +40,7 @@ import org.springframework.stereotype.Service;
 public class AiCallStatsService {
 
     private static final Set<String> KNOWN_SCENES = Set.of(
-            "NL2RULE", "EVENT_SUMMARY", "CHAT", "THRESHOLD"
+            "NL2RULE", "OBJECT_DRAFT", "EVENT_SUMMARY", "CHAT", "THRESHOLD"
     );
 
     private final AiCallLogMapper logMapper;

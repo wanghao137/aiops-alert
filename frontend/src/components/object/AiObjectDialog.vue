@@ -6,32 +6,31 @@
     append-to-body
     :close-on-click-modal="false"
     :show-close="!loading"
-    class="nl-rule-dialog"
+    class="ai-object-dialog"
     @closed="onClosed"
   >
     <template #header>
       <div class="dlg-header">
         <div class="header-eyebrow">
           <Sparkles :size="11" :stroke-width="1.8" />
-          <span>AI 建规则 · 一句话</span>
+          <span>AI 配对象 · 一句话</span>
         </div>
-        <div class="header-title">用一句话描述你的告警需求</div>
+        <div class="header-title">用一句话描述要监控的对象</div>
         <div class="header-sub">
           {{ availability === false
             ? '当前没有可用的 LLM。请先去「系统设置」配置一个模型。'
-            : 'AI 会替你选好对象、指标、阈值、级别和通知渠道，最终交给你确认。' }}
+            : 'AI 会补齐对象类型、负责人、标签、描述和扩展配置，最终仍由你确认保存。' }}
         </div>
       </div>
     </template>
 
-    <!-- ========== Prompt 阶段 ========== -->
     <div v-if="!result" class="prompt-area">
       <div class="terminal-shell">
         <div class="term-head">
           <span class="term-dot r" />
           <span class="term-dot y" />
           <span class="term-dot g" />
-          <span class="term-name">aiops:rule-builder</span>
+          <span class="term-name">aiops:object-builder</span>
           <span class="term-status" :class="{ ready: availability !== false }">
             <span class="dot-anim" />
             {{ availability === false ? '离线 OFFLINE' : '就绪 READY' }}
@@ -40,7 +39,7 @@
         <div class="term-body">
           <div class="term-prompt">
             <span class="prompt-mark">$</span>
-            <span class="prompt-cmd">describe</span>
+            <span class="prompt-cmd">describe-object</span>
             <span class="prompt-quote">"</span>
           </div>
           <textarea
@@ -85,12 +84,11 @@
       <LiveThinkingStream
         v-if="loading"
         :active="loading"
-        scene="nl-rule"
+        scene="object-config"
         :subject="prompt"
       />
     </div>
 
-    <!-- ========== Result 阶段 ========== -->
     <div v-else class="result-area">
       <ThinkingPanel
         v-if="result.reasoning"
@@ -99,7 +97,7 @@
         title="AI 思考过程"
       />
 
-      <div class="result-card">
+      <div class="object-result-card">
         <div class="result-meta">
           <span class="meta-chip">
             <BadgeCheck :size="11" :stroke-width="1.8" />
@@ -113,63 +111,52 @@
         <div v-if="result.understanding" class="understanding">
           <div class="under-mark">
             <Sparkles :size="12" :stroke-width="1.8" />
-            <span>需求理解</span>
+            <span>配置理解</span>
           </div>
           <div class="under-text">{{ result.understanding }}</div>
         </div>
 
         <div class="summary-grid">
-          <div class="summary-cell">
-            <span class="lbl">规则名称</span>
-            <span class="val">{{ result.draft.ruleName || '-' }}</span>
+          <div class="summary-cell span-2">
+            <span class="lbl">对象名称</span>
+            <span class="val strong">{{ result.draft.objectName || '-' }}</span>
           </div>
           <div class="summary-cell">
             <span class="lbl">对象类型</span>
             <span class="val">
-              <component :is="objectTypeMeta.icon" :size="13" :stroke-width="1.8"
-                :style="{ color: objectTypeMeta.color }" />
-              {{ result.draft.objectTypeName || objectTypeMeta.label }}
+              <component :is="objectTypeMeta.icon" :size="13" :stroke-width="1.8" :style="{ color: objectTypeMeta.color }" />
+              {{ objectTypeMeta.label }} / {{ result.draft.objectType }}
             </span>
           </div>
           <div class="summary-cell">
-            <span class="lbl">告警级别</span>
-            <span class="val">
-              <component :is="levelMeta.icon" :size="13" :stroke-width="1.8"
-                :style="{ color: levelMeta.color }" />
-              {{ levelMeta.label }}
-            </span>
+            <span class="lbl">对象编码</span>
+            <span class="val tabular-nums">{{ result.draft.objectCode || '保存时自动生成' }}</span>
           </div>
           <div class="summary-cell">
-            <span class="lbl">触发策略</span>
-            <span class="val tabular-nums">连续 {{ result.draft.triggerTimes }} 次 / 窗口 {{ result.draft.timeWindowMinutes }}min</span>
+            <span class="lbl">负责人</span>
+            <span class="val">{{ result.draft.ownerName || '-' }}</span>
+          </div>
+          <div class="summary-cell">
+            <span class="lbl">状态</span>
+            <span class="val">{{ result.draft.status === 'DISABLED' ? '停用' : '启用' }}</span>
           </div>
         </div>
 
-        <div class="formula-line">
-          <span class="lbl">触发公式</span>
-          <div class="formula-block">
-            <span class="formula-mark">▸</span>
-            <code>{{ formula }}</code>
-          </div>
-        </div>
-
-        <div class="rel-line" v-if="result.draft.objectIds?.length">
-          <span class="lbl">监控对象</span>
+        <div v-if="result.draft.tags" class="rel-line">
+          <span class="lbl">标签</span>
           <div class="rel-chips">
-            <span class="brief-chip" v-for="id in result.draft.objectIds" :key="id">
-              {{ objectName(id) }}
-            </span>
+            <span v-for="tag in tagList(result.draft.tags)" :key="tag" class="brief-chip">{{ tag }}</span>
           </div>
         </div>
 
-        <div class="rel-line" v-if="result.draft.channelBindings?.length">
-          <span class="lbl">通知渠道</span>
-          <div class="rel-chips">
-            <span class="brief-chip" v-for="b in result.draft.channelBindings" :key="b.channelId">
-              {{ channelName(b.channelId) }}
-              <small v-if="b.receiverValue">→ {{ b.receiverValue }}</small>
-            </span>
-          </div>
+        <div v-if="result.draft.description" class="description-line">
+          <span class="lbl">描述</span>
+          <p>{{ result.draft.description }}</p>
+        </div>
+
+        <div v-if="result.draft.extConfig" class="config-line">
+          <span class="lbl">扩展配置 JSON</span>
+          <pre>{{ result.draft.extConfig }}</pre>
         </div>
       </div>
 
@@ -193,7 +180,7 @@
           :disabled="!prompt.trim() || availability === false"
           @click="onSubmit"
         >
-          <Sparkles :size="13" :stroke-width="1.8" />&nbsp;{{ loading ? 'AI 思考中…' : '生成规则' }}
+          <Sparkles :size="13" :stroke-width="1.8" />&nbsp;{{ loading ? 'AI 思考中…' : '生成对象配置' }}
         </el-button>
       </template>
       <template v-else>
@@ -210,48 +197,42 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Sparkles, BadgeCheck, AlertTriangle, Wand2, Lightbulb } from 'lucide-vue-next'
 import {
-  Sparkles, BadgeCheck, AlertTriangle, Wand2, Lightbulb
-} from 'lucide-vue-next'
-import { checkNlRuleAvailability, draftNlRule, type NlRuleDraftResponse } from '@/api/nlRule'
-import type { AlertRuleItem } from '@/api/alertRule'
-import { listMonitorObjects, type MonitorObjectItem } from '@/api/monitorObject'
-import { listAlertChannels, type AlertChannelItem } from '@/api/alertChannel'
+  checkMonitorObjectAiAvailability,
+  draftMonitorObject,
+  type MonitorObjectDraftResponse,
+  type MonitorObjectItem
+} from '@/api/monitorObject'
 import { getObjectTypeMeta } from '@/utils/objectType'
-import { getAlertLevelMeta } from '@/utils/alertLevel'
-import { useCatalogStore } from '@/stores/catalog'
 import LiveThinkingStream from '@/components/ai/LiveThinkingStream.vue'
 import ThinkingPanel from '@/components/ai/ThinkingPanel.vue'
 
 const props = defineProps<{ modelValue: boolean }>()
 const emit = defineEmits<{
   (e: 'update:modelValue', v: boolean): void
-  (e: 'apply', draft: AlertRuleItem): void
+  (e: 'apply', draft: MonitorObjectItem): void
 }>()
 
-const catalog = useCatalogStore()
 const visible = ref(false)
 const prompt = ref('')
 const loading = ref(false)
 const availability = ref<boolean>()
-const result = ref<NlRuleDraftResponse>()
-const objects = ref<MonitorObjectItem[]>([])
-const channels = ref<AlertChannelItem[]>([])
+const result = ref<MonitorObjectDraftResponse>()
 const textareaRef = ref<HTMLTextAreaElement>()
 
-const placeholder = '当生产 MySQL 主从延迟超过 5 分钟、连续触发 3 次，发企微到 DBA 群，紧急级别'
-
+const placeholder = '添加生产 MySQL 主库，IP 10.0.0.21，端口 3306，DBA 值班负责，核心 7x24'
 const examples = [
-  '当生产 MySQL 主从延迟超过 5 分钟、连续触发 3 次，发企微到 DBA 群，紧急级别',
-  '应用服务器 CPU 持续 10 分钟超过 85%，发邮件给运维',
-  '客户信息同步作业失败 2 次以上，紧急通知数据团队',
-  '数据加工作业输出条数为 0 时立即告警，发邮件 + 企微'
+  '添加生产 MySQL 主库，IP 10.0.0.21，端口 3306，DBA 值班负责，核心 7x24',
+  '新增一台生产 Web 服务器 10.0.1.15，Nginx，SRE 团队负责',
+  '客户信息同步作业，每 5 分钟从 CRM 同步到数仓，数据团队负责',
+  '每日凌晨 2 点订单汇总加工作业，关注空跑、失败和超时'
 ]
 
 watch(() => props.modelValue, async (v) => {
   visible.value = v
   if (v) {
-    await initAll()
+    await init()
     await nextTick()
     textareaRef.value?.focus()
   }
@@ -261,19 +242,14 @@ watch(visible, (v) => {
   if (!v) emit('update:modelValue', false)
 })
 
-async function initAll() {
-  await catalog.ensureLoaded()
+const objectTypeMeta = computed(() => getObjectTypeMeta(result.value?.draft.objectType))
+
+async function init() {
   try {
-    availability.value = await checkNlRuleAvailability()
+    availability.value = await checkMonitorObjectAiAvailability()
   } catch {
     availability.value = false
   }
-  const [objs, chs] = await Promise.all([
-    listMonitorObjects({ status: 'ENABLED' }),
-    listAlertChannels({ status: 'ENABLED' })
-  ])
-  objects.value = objs
-  channels.value = chs
 }
 
 async function onSubmit() {
@@ -281,7 +257,7 @@ async function onSubmit() {
   if (!text) return
   loading.value = true
   try {
-    result.value = await draftNlRule(text)
+    result.value = await draftMonitorObject(text)
   } finally {
     loading.value = false
   }
@@ -299,7 +275,7 @@ function onCancel() {
 function onApply() {
   if (!result.value) return
   emit('apply', result.value.draft)
-  ElMessage.success('已填入规则编辑表单，请确认后保存')
+  ElMessage.success('已填入对象编辑表单，请确认后保存')
   visible.value = false
 }
 
@@ -308,46 +284,23 @@ function onClosed() {
   result.value = undefined
 }
 
-const objectTypeMeta = computed(() => getObjectTypeMeta(result.value?.draft.objectType))
-const levelMeta = computed(() => getAlertLevelMeta(result.value?.draft.alertLevel))
-
-const formula = computed(() => {
-  const draft = result.value?.draft
-  if (!draft?.conditions?.length) return '-'
-  const parts = draft.conditions.map((c) => {
-    const op = catalog.findCompareOp(c.compareOp)
-    const sym = op?.symbol || c.compareOp
-    if (op?.inputKind === 'state') {
-      return `${c.metricName} ${sym}`
-    }
-    return `${c.metricName} ${sym} ${c.thresholdValue || ''}${c.thresholdUnit || ''}`.trim()
-  })
-  const sep = draft.conditionLogic === 'OR' ? ' OR ' : ' AND '
-  return parts.join(sep)
-})
-
-function objectName(id: number) {
-  return objects.value.find((o) => o.id === id)?.objectName || `#${id}`
-}
-
-function channelName(id: number) {
-  return channels.value.find((c) => c.id === id)?.channelName || `#${id}`
+function tagList(tags?: string) {
+  if (!tags) return []
+  return tags.split(/[,，]/).map((t) => t.trim()).filter(Boolean)
 }
 </script>
 
-
 <style scoped>
-:deep(.nl-rule-dialog .el-dialog) {
+:deep(.ai-object-dialog.el-dialog) {
   background: var(--bg-elev-1);
   border: 1px solid var(--line);
   box-shadow: var(--inset);
 }
 
-:deep(.nl-rule-dialog .el-dialog__header) {
+:deep(.ai-object-dialog.el-dialog .el-dialog__header) {
   padding-bottom: 0;
 }
 
-/* ========== Header ========== */
 .dlg-header {
   display: grid;
   gap: 6px;
@@ -384,8 +337,11 @@ function channelName(id: number) {
   line-height: 1.6;
 }
 
-/* ========== Terminal shell ========== */
-.prompt-area { display: grid; gap: 14px; }
+.prompt-area,
+.result-area {
+  display: grid;
+  gap: 14px;
+}
 
 .terminal-shell {
   border: 1px solid var(--line-strong);
@@ -441,11 +397,7 @@ function channelName(id: number) {
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: var(--text-muted);
-}
-
-.term-status.ready .dot-anim {
-  background: var(--ok);
+  background: currentColor;
   animation: pulse-soft 2.4s ease-in-out infinite;
 }
 
@@ -457,15 +409,16 @@ function channelName(id: number) {
   display: flex;
   align-items: center;
   gap: 6px;
+  margin-bottom: 6px;
+  color: var(--text-secondary);
   font-family: var(--font-mono);
   font-size: 12px;
-  color: var(--text-secondary);
-  margin-bottom: 6px;
 }
 
 .prompt-mark { color: var(--accent); font-weight: 600; }
 .prompt-cmd { color: var(--text-primary); }
-.prompt-quote { color: var(--text-muted); }
+.prompt-quote,
+.quote-end { color: var(--text-muted); }
 
 .term-input {
   display: block;
@@ -487,28 +440,17 @@ function channelName(id: number) {
   font-style: italic;
 }
 
-.term-input:disabled {
-  cursor: not-allowed;
-  color: var(--text-faint);
-}
-
 .term-foot {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-top: 6px;
+  color: var(--text-faint);
   font-family: var(--font-mono);
   font-size: 11px;
-}
-
-.quote-end { color: var(--text-muted); }
-
-.kbd-hint {
-  color: var(--text-faint);
   letter-spacing: 0.1em;
 }
 
-/* ========== Examples ========== */
 .example-row {
   display: flex;
   flex-wrap: wrap;
@@ -516,12 +458,14 @@ function channelName(id: number) {
   gap: 6px;
 }
 
-.example-label {
+.example-label,
+.lbl {
   color: var(--text-muted);
   font-family: var(--font-mono);
   font-size: 10px;
-  letter-spacing: 0.18em;
-  margin-right: 4px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .example-chip {
@@ -541,37 +485,35 @@ function channelName(id: number) {
   background: var(--accent-soft);
 }
 
-.example-chip:disabled { opacity: 0.5; cursor: not-allowed; }
+.example-chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
-/* ========== Empty LLM ========== */
 .empty-llm {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 10px 12px;
+  border: 1px solid rgba(251, 191, 36, 0.3);
   border-radius: var(--radius-sm);
   background: var(--warn-soft);
-  border: 1px solid rgba(251, 191, 36, 0.3);
   color: var(--warn);
   font-size: 12px;
 }
 
-.empty-llm a { color: var(--accent); margin: 0 4px; }
-
-/* ========== Result ========== */
-.result-area {
-  display: grid;
-  gap: 12px;
-  animation: fade-up 0.3s ease both;
+.empty-llm a {
+  margin: 0 4px;
+  color: var(--accent);
 }
 
-.result-card {
+.object-result-card {
+  display: grid;
+  gap: 12px;
   padding: 16px;
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   background: var(--bg-elev-2);
-  display: grid;
-  gap: 12px;
 }
 
 .result-meta {
@@ -585,8 +527,8 @@ function channelName(id: number) {
   align-items: center;
   gap: 5px;
   padding: 2px 9px;
-  border-radius: 999px;
   border: 1px solid var(--line);
+  border-radius: 999px;
   background: var(--bg-elev-1);
   color: var(--text-muted);
   font-family: var(--font-mono);
@@ -610,10 +552,10 @@ function channelName(id: number) {
   align-items: center;
   gap: 5px;
   width: max-content;
+  color: var(--accent);
   font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 0.18em;
-  color: var(--accent);
 }
 
 .under-text {
@@ -638,16 +580,10 @@ function channelName(id: number) {
   border-radius: var(--radius-sm);
   background: var(--bg-elev-1);
   font-size: 12px;
+  min-width: 0;
 }
 
-.lbl {
-  color: var(--text-muted);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
+.span-2 { grid-column: span 2; }
 
 .val {
   display: inline-flex;
@@ -655,43 +591,17 @@ function channelName(id: number) {
   gap: 5px;
   color: var(--text-primary);
   font-weight: 500;
+  min-width: 0;
+  text-align: right;
 }
 
-/* Formula */
-.formula-line {
-  display: grid;
-  gap: 6px;
+.val.strong {
+  font-size: 13px;
 }
 
-.formula-block {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 9px 12px;
-  border: 1px solid var(--line);
-  border-left: 2px solid var(--accent);
-  border-radius: var(--radius-sm);
-  background: var(--bg-elev-1);
-}
-
-.formula-mark {
-  color: var(--accent);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  flex-shrink: 0;
-}
-
-.formula-block code {
-  flex: 1;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--text-primary);
-  word-break: break-all;
-  line-height: 1.5;
-}
-
-/* Rel chips */
-.rel-line {
+.rel-line,
+.description-line,
+.config-line {
   display: grid;
   gap: 6px;
 }
@@ -703,24 +613,37 @@ function channelName(id: number) {
 }
 
 .brief-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
   padding: 3px 9px;
-  border-radius: 999px;
   border: 1px solid var(--line);
+  border-radius: 999px;
   background: var(--bg-elev-1);
   color: var(--text-secondary);
   font-size: 12px;
 }
 
-.brief-chip small {
-  color: var(--text-muted);
-  margin-left: 2px;
-  font-family: var(--font-mono);
+.description-line p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.7;
 }
 
-/* Warn */
+.config-line pre {
+  margin: 0;
+  max-height: 180px;
+  overflow: auto;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elev-1);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .warn-card {
   padding: 12px 14px;
   border: 1px solid rgba(251, 191, 36, 0.35);
@@ -733,10 +656,10 @@ function channelName(id: number) {
   display: flex;
   align-items: center;
   gap: 6px;
+  margin-bottom: 6px;
   color: var(--warn);
   font-size: 13px;
   font-weight: 500;
-  margin-bottom: 6px;
 }
 
 .warn-list {
@@ -745,5 +668,15 @@ function channelName(id: number) {
   color: var(--text-secondary);
   font-size: 12px;
   line-height: 1.7;
+}
+
+@media (max-width: 640px) {
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .span-2 {
+    grid-column: span 1;
+  }
 }
 </style>

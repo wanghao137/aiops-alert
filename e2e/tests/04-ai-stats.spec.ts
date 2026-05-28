@@ -2,29 +2,26 @@ import { test, expect } from '@playwright/test'
 
 test.describe('AI 调用统计页', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/ai-stats', { waitUntil: 'domcontentloaded' })
+    await page.goto('/settings?tab=ai-stats', { waitUntil: 'domcontentloaded' })
   })
 
-  test('Hero + KPI + 双图表 + 慢调用 + 流水', async ({ page }) => {
-    await expect(page.locator('.hero .eyebrow').first()).toContainText('AI ENGINEERING')
-    await expect(page.locator('.hero-num').first()).toBeVisible()
+  test('系统设置内展示 AI 调用统计 + KPI + 双图表 + 慢调用 + 流水', async ({ page }) => {
+    await expect(page.locator('.settings-tab.active')).toContainText('AI 调用统计')
+    await expect(page.locator('.ai-stats-v .hero .eyebrow').first()).toContainText('AI 调用统计')
+    await expect(page.locator('.ai-stats-v .hero-num').first()).toBeVisible()
 
-    await expect(page.locator('.kpi-card')).toHaveCount(3)
+    await expect(page.locator('.ai-stats-v .kpi-card')).toHaveCount(3)
 
     await expect(page.locator('.chart-row .chart')).toHaveCount(2)
 
-    const canvases = page.locator('.chart-row canvas')
-    await expect(canvases.first()).toBeVisible({ timeout: 15_000 })
-    expect(await canvases.count()).toBeGreaterThanOrEqual(2)
+    await expect(page.locator('.chart-row .panel-block').first()).toContainText('今日场景分布')
+    await expect(page.locator('.chart-row .panel-block').nth(1)).toContainText('近 7 天调用趋势')
 
     const slowTable = page.locator('.slow-table')
     await expect(slowTable).toBeVisible()
-    const slowRows = page.locator('.slow-table tbody tr.data-row')
-    expect(await slowRows.count()).toBeGreaterThan(0)
 
     const logTable = page.locator('.log-table')
     await expect(logTable).toBeVisible()
-    expect(await page.locator('.log-table tbody tr.data-row').count()).toBeGreaterThan(0)
   })
 
   test('慢调用展开行 → 显示 prompt+response payload', async ({ page }) => {

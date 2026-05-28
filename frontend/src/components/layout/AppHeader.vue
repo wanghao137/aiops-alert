@@ -37,7 +37,7 @@
 
       <div class="conn">
         <span class="conn-dot" :class="{ live: sseConnected }" />
-        <span class="conn-text">{{ sseConnected ? 'LIVE' : 'OFFLINE' }}</span>
+        <span class="conn-text">{{ sseConnected ? '实时 LIVE' : '离线 OFFLINE' }}</span>
         <span class="conn-time">{{ now }}</span>
       </div>
     </div>
@@ -58,7 +58,7 @@ defineProps<{ sseConnected?: boolean }>()
 const route = useRoute()
 const cmdStore = useCommandPaletteStore()
 
-const eyebrow = computed(() => (route.meta?.eyebrow as string) || (route.meta?.title as string) || 'OVERVIEW')
+const eyebrow = computed(() => (route.meta?.eyebrow as string) || (route.meta?.title as string) || '总览')
 const title = computed(() => (route.meta?.title as string) || '总览')
 
 const now = ref(formatNow())

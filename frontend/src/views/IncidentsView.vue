@@ -4,7 +4,7 @@
     <section class="hero">
       <div class="hero-left">
         <div class="hero-eyebrow">
-          <span class="eyebrow">INCIDENT GROUPS</span>
+          <span class="eyebrow">故障组 / INCIDENTS</span>
           <span class="dot-anim" />
           <span class="hero-time">同对象 30 分钟自动归并</span>
         </div>
@@ -84,7 +84,7 @@
 
           <div class="ic-stat">
             <div class="ic-stat-num tabular-nums">{{ inc.eventCount }}</div>
-            <div class="ic-stat-lbl">EVENTS</div>
+            <div class="ic-stat-lbl">事件 EVENTS</div>
           </div>
         </header>
 

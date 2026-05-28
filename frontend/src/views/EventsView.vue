@@ -4,7 +4,7 @@
     <section class="hero">
       <div class="hero-left">
         <div class="hero-eyebrow">
-          <span class="eyebrow">EVENT CENTER</span>
+          <span class="eyebrow">事件中心 / EVENTS</span>
           <span class="dot-anim" />
           <span class="hero-time">{{ realtime.recentEvents.length }} 条实时</span>
         </div>
@@ -49,7 +49,7 @@
       <!-- 左：状态侧栏 + 实时流 -->
       <aside class="side">
         <div class="side-section">
-          <div class="eyebrow">QUEUE</div>
+          <div class="eyebrow">事件队列 / QUEUE</div>
           <div class="tabs">
             <button
               v-for="t in statusTabs"
@@ -66,7 +66,7 @@
         </div>
 
         <div v-if="realtime.recentEvents.length" class="side-section">
-          <div class="eyebrow"><span class="live-dot" />LIVE FEED</div>
+          <div class="eyebrow"><span class="live-dot" />实时流 / LIVE</div>
           <div class="live-list">
             <div
               v-for="ev in realtime.recentEvents.slice(0, 6)"
@@ -155,7 +155,7 @@
         <div class="detail-head">
           <span class="lv-strip" :style="{ background: getAlertLevelMeta(detail.alertLevel).color }" />
           <div>
-            <div class="eyebrow">EVENT · {{ detail.eventNo }}</div>
+            <div class="eyebrow">事件 · {{ detail.eventNo }}</div>
             <h3 class="detail-title">{{ detail.eventTitle }}</h3>
             <div class="detail-sub">
               <span class="lv-tag" :style="{
@@ -175,11 +175,18 @@
           @refresh="onRefreshSummary"
         />
 
-        <!-- AI 思考 -->
+        <!-- AI 可解释分析链路 -->
+        <AiProcessPanel
+          :event="detail"
+          :summary-status="detail.aiSummaryStatus"
+          :has-raw-reasoning="!!detail.aiReasoning"
+        />
+
+        <!-- 模型原始推理内容 -->
         <ThinkingPanel
           v-if="detail.aiReasoning"
           :content="detail.aiReasoning"
-          title="AI 思考过程"
+          title="模型原始推理内容"
         />
 
         <!-- 操作 -->
@@ -219,7 +226,7 @@
 
         <!-- 通知日志 -->
         <div v-if="detail.notifyLogs?.length" class="logs">
-          <div class="eyebrow">NOTIFICATIONS · {{ detail.notifyLogs.length }}</div>
+          <div class="eyebrow">通知记录 · {{ detail.notifyLogs.length }}</div>
           <div v-for="n in detail.notifyLogs" :key="n.id" class="log-item">
             <span class="log-icon" :style="{ color: getChannelTypeMeta(n.channelType).color }">
               <component :is="getChannelTypeMeta(n.channelType).icon" :size="13" :stroke-width="1.6" />
@@ -240,7 +247,7 @@
 
         <!-- 处理记录 -->
         <div v-if="detail.handleLogs?.length" class="logs">
-          <div class="eyebrow">HISTORY · {{ detail.handleLogs.length }}</div>
+          <div class="eyebrow">处理记录 · {{ detail.handleLogs.length }}</div>
           <div v-for="h in detail.handleLogs" :key="h.id" class="log-item">
             <span class="log-icon"><Clock :size="13" :stroke-width="1.6" /></span>
             <div class="log-meta">
@@ -303,6 +310,7 @@ import {
   ChevronDown
 } from 'lucide-vue-next'
 import AiSummaryCard from '@/components/alert/AiSummaryCard.vue'
+import AiProcessPanel from '@/components/ai/AiProcessPanel.vue'
 import ThinkingPanel from '@/components/ai/ThinkingPanel.vue'
 import SkeletonList from '@/components/common/SkeletonList.vue'
 import { OBJECT_TYPES, getObjectTypeMeta } from '@/utils/objectType'
@@ -650,6 +658,9 @@ onMounted(loadAll)
   grid-template-columns: 240px minmax(0, 1fr);
   gap: 16px;
   align-items: start;
+  animation: none !important;
+  transform: none !important;
+  filter: none !important;
 }
 
 .layout.has-detail {
@@ -989,6 +1000,44 @@ onMounted(loadAll)
   display: grid;
   gap: 16px;
   align-content: start;
+}
+
+@media (min-width: 1281px) {
+  .detail {
+    position: fixed;
+    top: 88px;
+    right: 28px;
+    bottom: 20px;
+    width: clamp(420px, 32vw, 560px);
+    max-height: none;
+    z-index: 40;
+  }
+}
+
+@media (max-width: 1280px) {
+  .detail {
+    position: fixed;
+    top: 78px;
+    right: 14px;
+    bottom: 14px;
+    z-index: 80;
+    width: min(560px, calc(100vw - 28px));
+    max-height: none;
+    box-shadow:
+      var(--inset),
+      0 24px 80px -24px rgba(0, 0, 0, 0.68);
+  }
+}
+
+@media (max-width: 900px) {
+  .detail {
+    top: 70px;
+    right: 12px;
+    bottom: 78px;
+    left: 12px;
+    width: auto;
+    padding: 18px;
+  }
 }
 
 .close-btn {

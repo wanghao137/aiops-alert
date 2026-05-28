@@ -1,9 +1,10 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { apiUrl } from '@/api/base'
 
 type Handler = (payload: unknown) => void
 
 interface UseAlertStreamOptions {
-  /** SSE URL，默认 /api/stream/alerts */
+  /** SSE URL，默认由 VITE_API_BASE_URL + /stream/alerts 拼出 */
   url?: string
   /** 监听 event-created */
   onEventCreated?: Handler
@@ -71,7 +72,7 @@ function parseData(raw: string): unknown {
 }
 
 export function useAlertStream(options: UseAlertStreamOptions = {}) {
-  const url = options.url || '/api/stream/alerts'
+  const url = options.url || apiUrl('/stream/alerts')
   const autoReconnect = options.autoReconnect !== false
 
   onMounted(() => {

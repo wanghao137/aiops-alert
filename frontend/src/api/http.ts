@@ -1,6 +1,7 @@
 import axios, { type AxiosInstance, type AxiosRequestConfig } from 'axios'
 import { ElMessage } from 'element-plus'
 import { useHttpHealth } from '@/composables/useHttpHealth'
+import { API_BASE_URL } from './base'
 
 export interface ApiResult<T> {
   code: number
@@ -11,7 +12,7 @@ export interface ApiResult<T> {
 const httpHealth = useHttpHealth()
 
 const instance: AxiosInstance = axios.create({
-  baseURL: '/api',
+  baseURL: API_BASE_URL,
   timeout: 30000
 })
 

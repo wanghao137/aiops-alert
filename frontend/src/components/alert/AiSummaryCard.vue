@@ -3,7 +3,7 @@
     <header class="head">
       <div class="brand">
         <Sparkles :size="11" :stroke-width="1.8" />
-        <span>AI INTELLIGENCE</span>
+        <span>AI 智能分析</span>
       </div>
       <span v-if="status === 'success'" class="ready-pill">
         <span class="ready-dot" />
@@ -36,6 +36,11 @@
         <span class="thinking-text">{{ thinkingText }}</span>
         <span class="caret" />
       </div>
+      <LiveThinkingStream
+        :active="loading || status === 'pending'"
+        scene="event-summary"
+        compact
+      />
       <div v-if="status === 'pending' && !loading" class="pending-hint">
         摘要等待回写中。若长期停留在该状态，可重新生成。
       </div>
@@ -97,6 +102,7 @@ import {
   Search, Activity, HelpCircle, CheckCircle2
 } from 'lucide-vue-next'
 import { parseAiSummary, type AiSummary } from '@/api/alertEvent'
+import LiveThinkingStream from '@/components/ai/LiveThinkingStream.vue'
 
 const props = defineProps<{
   rawSummary?: string
@@ -157,6 +163,11 @@ onBeforeUnmount(() => stopThinking())
 <style scoped>
 .ai-summary-card {
   position: relative;
+  display: grid;
+  gap: 16px;
+  align-self: start;
+  min-width: 0;
+  height: auto;
   padding: 18px;
   border-radius: var(--radius-md);
   border: 1px solid var(--accent-line);
@@ -181,11 +192,12 @@ onBeforeUnmount(() => stopThinking())
 }
 
 .head {
-  display: flex;
+  display: grid;
+  grid-template-columns: max-content max-content minmax(0, 1fr);
   align-items: center;
   gap: 10px;
-  flex-wrap: wrap;
-  margin-bottom: 16px;
+  margin-bottom: 0;
+  min-width: 0;
 }
 
 .brand {
@@ -201,6 +213,7 @@ onBeforeUnmount(() => stopThinking())
   font-size: 10px;
   font-weight: 500;
   letter-spacing: 0.18em;
+  white-space: nowrap;
 }
 
 .ready-pill {
@@ -244,7 +257,7 @@ onBeforeUnmount(() => stopThinking())
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  margin-left: auto;
+  justify-self: end;
   padding: 4px 10px;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
@@ -471,6 +484,15 @@ onBeforeUnmount(() => stopThinking())
 
 /* Responsive */
 @media (max-width: 640px) {
+  .head {
+    grid-template-columns: 1fr auto;
+  }
+
+  .refresh-btn {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+
   .content,
   .loading-grid {
     grid-template-columns: 1fr;

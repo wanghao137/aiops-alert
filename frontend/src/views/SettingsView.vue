@@ -4,7 +4,7 @@
     <section class="hero">
       <div class="hero-left">
         <div class="hero-eyebrow">
-          <span class="eyebrow">SYSTEM SETTINGS</span>
+          <span class="eyebrow">系统设置 / SETTINGS</span>
           <span class="dot-anim" :class="{ ok: hasDefault }" />
           <span class="hero-time">{{ hasDefault ? 'AI 能力已启用' : 'AI 能力未启用' }}</span>
         </div>
@@ -34,31 +34,55 @@
       </div>
     </section>
 
-    <!-- ========== Status banner ========== -->
-    <section class="status-banner" :class="hasDefault ? 'ok' : 'warn'">
-      <span class="banner-icon">
-        <component :is="hasDefault ? CheckIcon : AlertIcon" :size="13" :stroke-width="1.8" />
-      </span>
-      <div class="banner-text">
-        <template v-if="hasDefault">
-          当前默认模型：<strong>{{ defaultConfig?.configName }}</strong>
-          <span class="banner-meta">{{ defaultConfig?.provider }} · {{ defaultConfig?.modelName }}</span>
-        </template>
-        <template v-else>
-          尚未设置默认模型 — AI 建规则等能力暂不可用，添加一个 LLM 配置后即可启用。
-        </template>
-      </div>
+    <section class="settings-tabs" aria-label="系统设置分类">
+      <button
+        class="settings-tab"
+        :class="{ active: activeTab === 'llm' }"
+        type="button"
+        @click="setTab('llm')"
+      >
+        <Bot :size="13" :stroke-width="1.7" />
+        <span>模型配置</span>
+        <small>LLM</small>
+      </button>
+      <button
+        class="settings-tab"
+        :class="{ active: activeTab === 'ai-stats' }"
+        type="button"
+        @click="setTab('ai-stats')"
+      >
+        <ActivityIcon :size="13" :stroke-width="1.7" />
+        <span>AI 调用统计</span>
+        <small>Usage</small>
+      </button>
     </section>
 
-    <!-- ========== LLM Cards ========== -->
-    <section v-loading="loading" class="llm-list"
-      :style="{ minHeight: list.length ? 'auto' : '240px' }">
-      <article
-        v-for="item in list"
-        :key="item.id"
-        class="llm-card"
-        :class="{ 'is-default': item.isDefault, disabled: item.status !== 'ENABLED' }"
-      >
+    <template v-if="activeTab === 'llm'">
+      <!-- ========== Status banner ========== -->
+      <section class="status-banner" :class="hasDefault ? 'ok' : 'warn'">
+        <span class="banner-icon">
+          <component :is="hasDefault ? CheckIcon : AlertIcon" :size="13" :stroke-width="1.8" />
+        </span>
+        <div class="banner-text">
+          <template v-if="hasDefault">
+            当前默认模型：<strong>{{ defaultConfig?.configName }}</strong>
+            <span class="banner-meta">{{ defaultConfig?.provider }} · {{ defaultConfig?.modelName }}</span>
+          </template>
+          <template v-else>
+            尚未设置默认模型 - AI 建规则等能力暂不可用，添加一个 LLM 配置后即可启用。
+          </template>
+        </div>
+      </section>
+
+      <!-- ========== LLM Cards ========== -->
+      <section v-loading="loading" class="llm-list"
+        :style="{ minHeight: list.length ? 'auto' : '240px' }">
+        <article
+          v-for="item in list"
+          :key="item.id"
+          class="llm-card"
+          :class="{ 'is-default': item.isDefault, disabled: item.status !== 'ENABLED' }"
+        >
         <!-- 左：大模型标识 -->
         <div class="card-left">
           <div class="provider-badge" :class="providerClass(item.provider)">
@@ -71,11 +95,11 @@
           <div class="status-tags">
             <span v-if="item.isDefault" class="tag default">
               <Crown :size="10" :stroke-width="1.8" />
-              DEFAULT
+              默认
             </span>
             <span class="tag" :class="item.status === 'ENABLED' ? 'on' : 'off'">
               <span class="tag-dot" />
-              {{ item.status === 'ENABLED' ? 'ENABLED' : 'DISABLED' }}
+              {{ item.status === 'ENABLED' ? '启用' : '停用' }}
             </span>
           </div>
         </div>
@@ -83,20 +107,20 @@
         <!-- 右：配置详情 -->
         <div class="card-right">
           <div class="kv-row">
-            <span class="kv-key">BASE URL</span>
+            <span class="kv-key">接口地址 BASE URL</span>
             <code class="kv-val">{{ item.baseUrl }}</code>
           </div>
           <div class="kv-row">
-            <span class="kv-key">API KEY</span>
+            <span class="kv-key">密钥 API KEY</span>
             <code class="kv-val muted">{{ item.apiKeyMasked || '— 未设置 —' }}</code>
           </div>
           <div class="kv-row split">
             <div>
-              <span class="kv-key">TEMPERATURE</span>
+              <span class="kv-key">温度 TEMPERATURE</span>
               <span class="kv-val tabular-nums">{{ item.temperature ?? '-' }}</span>
             </div>
             <div>
-              <span class="kv-key">MAX TOKENS</span>
+              <span class="kv-key">最大 TOKENS</span>
               <span class="kv-val tabular-nums">{{ item.maxTokens ?? '-' }}</span>
             </div>
           </div>
@@ -134,7 +158,9 @@
           <PlusIcon :size="13" :stroke-width="1.7" /> 新增 LLM 配置
         </button>
       </div>
-    </section>
+      </section>
+    </template>
+    <AiStatsView v-else embedded />
 
     <!-- ========== 编辑对话框 ========== -->
     <el-dialog
@@ -147,7 +173,7 @@
       <el-form ref="formRef" :model="form" :rules="rules" label-position="top">
         <!-- 快速预设 -->
         <div v-if="!form.id" class="preset-row">
-          <span class="preset-label">PRESETS</span>
+          <span class="preset-label">快速预设 PRESETS</span>
           <button
             v-for="p in presets"
             :key="p.label"
@@ -197,10 +223,10 @@
               </el-option-group>
             </el-select>
           </el-form-item>
-          <el-form-item label="Base URL" prop="baseUrl" class="span-2">
+          <el-form-item label="接口地址 Base URL" prop="baseUrl" class="span-2">
             <el-input v-model="form.baseUrl" placeholder="例如：https://api.openai.com/v1" />
           </el-form-item>
-          <el-form-item label="API Key" prop="apiKey" class="span-2">
+          <el-form-item label="访问密钥 API Key" prop="apiKey" class="span-2">
             <el-input
               v-model="form.apiKey"
               type="password"
@@ -208,11 +234,11 @@
               :placeholder="form.id ? '留空则保留原 API Key' : '请输入 API Key'"
             />
           </el-form-item>
-          <el-form-item label="Temperature">
+          <el-form-item label="温度 Temperature">
             <el-input-number v-model="form.temperature" :min="0" :max="2" :step="0.1" :precision="2"
               controls-position="right" class="full" />
           </el-form-item>
-          <el-form-item label="Max Tokens">
+          <el-form-item label="最大 Tokens">
             <el-input-number v-model="form.maxTokens" :min="2048" :max="131072" :step="1024"
               controls-position="right" class="full" />
           </el-form-item>
@@ -243,6 +269,13 @@
       width="660px"
       class="llm-dialog"
     >
+      <div v-if="!testResult" class="test-result">
+        <LiveThinkingStream
+          :active="testDialogVisible && !!testingId"
+          scene="llm-test"
+          subject="测试连通"
+        />
+      </div>
       <div v-if="testResult" class="test-result">
         <div class="test-banner" :class="testResult.success ? 'ok' : 'fail'">
           <span class="banner-icon">
@@ -267,12 +300,12 @@
         />
 
         <div v-if="testResult.reply" class="reply-card">
-          <div class="reply-label">MODEL REPLY</div>
+          <div class="reply-label">模型回复 MODEL REPLY</div>
           <div class="reply-text">{{ testResult.reply }}</div>
         </div>
 
         <div v-if="testResult.error" class="error-card">
-          <div class="reply-label">ERROR</div>
+          <div class="reply-label">错误 ERROR</div>
           <pre class="error-text">{{ testResult.error }}</pre>
         </div>
       </div>
@@ -285,7 +318,8 @@
 
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, type Component } from 'vue'
+import { computed, onMounted, reactive, ref, watch, type Component } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import {
   Plus as PlusIcon,
@@ -298,11 +332,14 @@ import {
   Crown,
   Sparkles,
   Zap,
+  Activity as ActivityIcon,
   Cpu,
   Bot,
   Globe
 } from 'lucide-vue-next'
+import LiveThinkingStream from '@/components/ai/LiveThinkingStream.vue'
 import ThinkingPanel from '@/components/ai/ThinkingPanel.vue'
+import AiStatsView from '@/views/AiStatsView.vue'
 import {
   deleteLlmConfig,
   listLlmConfigs,
@@ -321,6 +358,23 @@ const formRef = ref<FormInstance>()
 const testingId = ref<number>()
 const testDialogVisible = ref(false)
 const testResult = ref<LlmTestResult>()
+const route = useRoute()
+const router = useRouter()
+
+type SettingsTab = 'llm' | 'ai-stats'
+const activeTab = ref<SettingsTab>(route.query.tab === 'ai-stats' ? 'ai-stats' : 'llm')
+
+watch(() => route.query.tab, (tab) => {
+  activeTab.value = tab === 'ai-stats' ? 'ai-stats' : 'llm'
+})
+
+function setTab(tab: SettingsTab) {
+  activeTab.value = tab
+  const query = { ...route.query }
+  if (tab === 'ai-stats') query.tab = 'ai-stats'
+  else delete query.tab
+  router.replace({ path: '/settings', query })
+}
 
 interface Preset {
   label: string
@@ -459,9 +513,9 @@ async function onTest(item: LlmModelConfigItem) {
   if (!item.id) return
   testingId.value = item.id
   testResult.value = undefined
+  testDialogVisible.value = true
   try {
     testResult.value = await testLlmConfig(item.id)
-    testDialogVisible.value = true
     if (testResult.value.success) {
       ElMessage.success(`连通成功（${testResult.value.durationMs}ms）`)
     } else {
@@ -603,6 +657,56 @@ onMounted(loadList)
 }
 
 .hero-action.primary:hover { filter: brightness(1.08); }
+
+/* ========== Settings tabs ========== */
+.settings-tabs {
+  display: inline-flex;
+  width: max-content;
+  max-width: 100%;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--bg-elev-1);
+  box-shadow: var(--inset);
+  overflow-x: auto;
+}
+
+.settings-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 13px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.settings-tab small {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+}
+
+.settings-tab:hover {
+  color: var(--text-primary);
+}
+
+.settings-tab.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.settings-tab.active small {
+  color: var(--accent);
+}
 
 /* ========== Status banner ========== */
 .status-banner {
@@ -1062,6 +1166,8 @@ onMounted(loadList)
 @media (max-width: 760px) {
   .settings-v { padding: 0 14px 24px; }
   .hero-num { font-size: 64px; }
+  .settings-tabs { width: 100%; border-radius: var(--radius-md); }
+  .settings-tab { flex: 1; justify-content: center; }
   .llm-card { grid-template-columns: 1fr; }
   .card-left { border-right: 0; border-bottom: 1px solid var(--line); }
   .form-grid { grid-template-columns: 1fr; }
