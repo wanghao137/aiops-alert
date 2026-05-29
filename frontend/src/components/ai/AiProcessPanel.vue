@@ -58,18 +58,21 @@ const props = defineProps<{
 
 const panelState = computed(() => {
   if (props.summaryStatus === 'FAILED') return 'failed'
+  if (props.summaryStatus === 'STALE') return 'stale'
   if (props.summaryStatus === 'SUCCESS') return 'success'
   return 'running'
 })
 
 const stateIcon = computed(() => {
   if (panelState.value === 'failed') return AlertTriangle
+  if (panelState.value === 'stale') return AlertTriangle
   if (panelState.value === 'success') return CheckCircle2
   return Loader2
 })
 
 const stateLabel = computed(() => {
   if (panelState.value === 'failed') return '生成失败'
+  if (panelState.value === 'stale') return '待重新生成'
   if (panelState.value === 'success') return '分析完成'
   return '分析中'
 })
@@ -82,7 +85,13 @@ const eventValue = computed(() => {
 
 const steps = computed(() => {
   const finalState = panelState.value
-  const causeState = finalState === 'failed' ? 'failed' : finalState === 'success' ? 'done' : 'active'
+  const causeState = finalState === 'failed'
+    ? 'failed'
+    : finalState === 'success'
+      ? 'done'
+      : finalState === 'stale'
+        ? 'waiting'
+        : 'active'
   const actionState = finalState === 'success' ? 'done' : finalState === 'failed' ? 'failed' : 'waiting'
   return [
     {
@@ -98,7 +107,7 @@ const steps = computed(() => {
       index: '02',
       title: '判断影响范围',
       detail: `${props.event.ruleName || '当前规则'} 触发 ${props.event.alertLevel} 级别告警，优先确认业务影响面。`,
-      state: finalState === 'failed' ? 'failed' : 'done',
+      state: finalState === 'failed' ? 'failed' : finalState === 'stale' ? 'waiting' : 'done',
       icon: Radar
     },
     {
@@ -117,7 +126,9 @@ const steps = computed(() => {
         ? '已形成发生原因、影响范围和建议动作，可进入确认、恢复、关闭闭环。'
         : finalState === 'failed'
           ? '模型未完成摘要，可重新生成或切换模型后再试。'
-          : '等待模型回写结构化摘要，完成后会自动刷新详情。',
+          : finalState === 'stale'
+            ? '上一次生成没有回写结果，请点击重新生成后再继续处置。'
+            : '等待模型回写结构化摘要，完成后会自动刷新详情。',
       state: actionState,
       icon: finalState === 'success' ? ListChecks : Circle
     }
@@ -127,6 +138,7 @@ const steps = computed(() => {
 
 <style scoped>
 .ai-process-panel {
+  position: relative;
   display: grid;
   gap: 14px;
   padding: 16px;
@@ -136,6 +148,8 @@ const steps = computed(() => {
     linear-gradient(135deg, color-mix(in srgb, var(--accent) 10%, transparent), transparent 56%),
     var(--bg-elev-2);
   box-shadow: var(--inset);
+  min-width: 0;
+  overflow: hidden;
 }
 
 .process-head {
@@ -184,6 +198,12 @@ const steps = computed(() => {
   color: var(--danger);
 }
 
+.state-pill.stale {
+  border-color: rgba(251, 191, 36, 0.35);
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
 .process-rail {
   display: grid;
   gap: 8px;
@@ -192,13 +212,14 @@ const steps = computed(() => {
 .process-step {
   position: relative;
   display: grid;
-  grid-template-columns: 34px 28px 1fr;
+  grid-template-columns: 34px 28px minmax(0, 1fr);
   gap: 9px;
   align-items: start;
   padding: 10px 12px;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   background: var(--bg-elev-1);
+  min-width: 0;
 }
 
 .step-index {
@@ -250,6 +271,7 @@ const steps = computed(() => {
   color: var(--text-primary);
   font-size: 12.5px;
   font-weight: 500;
+  overflow-wrap: anywhere;
 }
 
 .step-body p {
@@ -257,11 +279,14 @@ const steps = computed(() => {
   color: var(--text-muted);
   font-size: 12px;
   line-height: 1.6;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .process-foot {
   display: flex;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 10px;
   color: var(--text-faint);
   font-size: 11.5px;

@@ -9,6 +9,7 @@ import com.aiops.alert.mapper.AlertRuleMapper;
 import com.aiops.alert.mapper.MonitorObjectMapper;
 import com.aiops.alert.service.stream.AlertStreamService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -54,8 +55,14 @@ public class EventSummaryService {
         AlertEvent event = eventMapper.selectById(eventId);
         if (event == null) return;
 
+        event.setAiSummaryStatus("PENDING");
+        event.setUpdatedAt(LocalDateTime.now());
+        eventMapper.updateById(event);
+        broadcastSummary(event);
+
         if (!configService.hasUsableConfig()) {
             event.setAiSummaryStatus("FAILED");
+            event.setUpdatedAt(LocalDateTime.now());
             event.setAiSummary(jsonOf(Map.of(
                     "error", "AI 未配置",
                     "what", event.getEventTitle(),
@@ -119,6 +126,7 @@ public class EventSummaryService {
             event.setAiSummary(content);
             event.setAiReasoning(result.getReasoning());
             event.setAiSummaryStatus("SUCCESS");
+            event.setUpdatedAt(LocalDateTime.now());
             eventMapper.updateById(event);
             broadcastSummary(event);
         } catch (Exception e) {
@@ -131,6 +139,7 @@ public class EventSummaryService {
                     "actions", List.of()
             )));
             event.setAiSummaryStatus("FAILED");
+            event.setUpdatedAt(LocalDateTime.now());
             eventMapper.updateById(event);
             broadcastSummary(event);
         }

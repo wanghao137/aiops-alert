@@ -121,8 +121,11 @@
                 <span v-if="ev.aiSummaryStatus === 'SUCCESS'" class="ai-pill" title="AI 摘要已生成">
                   <Sparkles :size="10" :stroke-width="1.8" /> AI
                 </span>
-                <span v-else-if="ev.aiSummaryStatus === 'PENDING'" class="ai-pill pending">
+                <span v-else-if="aiSummaryDisplayStatus(ev) === 'PENDING'" class="ai-pill pending">
                   <Sparkles :size="10" :stroke-width="1.8" /> 思考中
+                </span>
+                <span v-else-if="aiSummaryDisplayStatus(ev) === 'STALE'" class="ai-pill stale" title="上一次生成未回写结果">
+                  <Sparkles :size="10" :stroke-width="1.8" /> 需重试
                 </span>
                 <span class="time tabular-nums">{{ formatTime(ev.lastTriggeredAt) }}</span>
               </div>
@@ -170,7 +173,7 @@
         <!-- AI 摘要 -->
         <AiSummaryCard
           :raw-summary="detail.aiSummary"
-          :raw-status="detail.aiSummaryStatus"
+          :raw-status="aiSummaryDisplayStatus(detail)"
           :loading="summaryLoading"
           @refresh="onRefreshSummary"
         />
@@ -178,7 +181,7 @@
         <!-- AI 可解释分析链路 -->
         <AiProcessPanel
           :event="detail"
-          :summary-status="detail.aiSummaryStatus"
+          :summary-status="aiSummaryDisplayStatus(detail)"
           :has-raw-reasoning="!!detail.aiReasoning"
         />
 
@@ -341,6 +344,26 @@ const events = computed(() => {
   if (!filters.eventStatus) return allEvents.value
   return allEvents.value.filter((e) => e.eventStatus === filters.eventStatus)
 })
+
+const AI_PENDING_STALE_MS = 5 * 60 * 1000
+
+function timestampOf(value?: string) {
+  if (!value) return 0
+  const ts = Date.parse(value)
+  return Number.isFinite(ts) ? ts : 0
+}
+
+function isAiSummaryStale(ev?: AlertEventItem) {
+  if (!ev || ev.aiSummaryStatus !== 'PENDING' || ev.aiSummary) return false
+  const basis = timestampOf(ev.updatedAt) || timestampOf(ev.lastTriggeredAt) || timestampOf(ev.createdAt)
+  if (!basis) return false
+  return Date.now() - basis > AI_PENDING_STALE_MS
+}
+
+function aiSummaryDisplayStatus(ev?: AlertEventItem) {
+  if (isAiSummaryStale(ev)) return 'STALE'
+  return ev?.aiSummaryStatus || ''
+}
 
 const counts = computed(() => {
   const total = allEvents.value.length
@@ -931,6 +954,12 @@ onMounted(loadAll)
   color: var(--warn);
 }
 
+.ai-pill.stale {
+  border-color: rgba(248, 113, 113, 0.35);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
 .time {
   margin-left: auto;
   font-family: var(--font-mono);
@@ -991,15 +1020,27 @@ onMounted(loadAll)
   position: sticky;
   top: 80px;
   max-height: calc(100vh - 100px);
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   padding: 20px;
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   background: var(--bg-elev-1);
   box-shadow: var(--inset);
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 16px;
-  align-content: start;
+  align-items: stretch;
+  min-width: 0;
+  scrollbar-gutter: stable;
+}
+
+.detail > * {
+  min-width: 0;
+}
+
+.detail > :not(.close-btn) {
+  flex: 0 0 auto;
 }
 
 @media (min-width: 1281px) {
@@ -1008,7 +1049,7 @@ onMounted(loadAll)
     top: 88px;
     right: 28px;
     bottom: 20px;
-    width: clamp(420px, 32vw, 560px);
+    width: clamp(520px, 34vw, 640px);
     max-height: none;
     z-index: 40;
   }
@@ -1062,9 +1103,10 @@ onMounted(loadAll)
 
 .detail-head {
   display: grid;
-  grid-template-columns: 3px 1fr;
+  grid-template-columns: 3px minmax(0, 1fr);
   gap: 14px;
   padding-right: 36px;
+  min-width: 0;
 }
 
 .lv-strip {
@@ -1081,16 +1123,20 @@ onMounted(loadAll)
   color: var(--text-primary);
   letter-spacing: -0.01em;
   line-height: 1.4;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .detail-sub {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
 .actions-bar {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
@@ -1142,7 +1188,7 @@ onMounted(loadAll)
 
 .kv-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   padding: 14px;
   border: 1px solid var(--line);
@@ -1162,6 +1208,9 @@ onMounted(loadAll)
 .kv-grid .v {
   font-size: 13px;
   color: var(--text-primary);
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .kv-grid .v code {
@@ -1195,7 +1244,7 @@ onMounted(loadAll)
   margin-top: 1px;
 }
 
-.log-line { display: flex; gap: 8px; align-items: baseline; }
+.log-line { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; min-width: 0; }
 .log-line strong { font-size: 12px; font-weight: 500; color: var(--text-primary); }
 .log-line .muted { color: var(--text-muted); font-size: 11px; }
 

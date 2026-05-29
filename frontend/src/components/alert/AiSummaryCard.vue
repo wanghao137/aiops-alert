@@ -13,7 +13,11 @@
         <span class="spinner" />
         生成中
       </span>
-      <button v-if="!loading" class="refresh-btn" :class="{ subtle: status === 'pending' }" @click="emit('refresh')">
+      <span v-else-if="status === 'stale'" class="ready-pill stale">
+        <AlertTriangle :size="11" :stroke-width="1.8" />
+        未完成
+      </span>
+      <button v-if="!loading" class="refresh-btn" :class="{ subtle: status === 'pending' || status === 'stale' }" @click="emit('refresh')">
         <RefreshCw :size="12" :stroke-width="1.8" />
         重新生成
       </button>
@@ -43,6 +47,17 @@
       />
       <div v-if="status === 'pending' && !loading" class="pending-hint">
         摘要等待回写中。若长期停留在该状态，可重新生成。
+      </div>
+    </div>
+
+    <!-- PENDING 过期：不再伪装成正在思考 -->
+    <div v-else-if="status === 'stale'" class="stale-state">
+      <div class="stale-icon">
+        <AlertTriangle :size="15" :stroke-width="1.8" />
+      </div>
+      <div class="stale-copy">
+        <strong>摘要未完成</strong>
+        <span>上一次生成没有回写结果，可能是服务重启、模型超时或任务中断。请重新生成。</span>
       </div>
     </div>
 
@@ -116,6 +131,7 @@ const summary = computed<AiSummary | undefined>(() => parseAiSummary(props.rawSu
 
 const status = computed(() => {
   if (props.loading) return 'loading'
+  if (props.rawStatus === 'STALE') return 'stale'
   if (props.rawStatus === 'PENDING' || (!props.rawStatus && !props.rawSummary)) return 'pending'
   if (props.rawStatus === 'FAILED') return 'failed'
   return 'success'
@@ -166,6 +182,7 @@ onBeforeUnmount(() => stopThinking())
   display: grid;
   gap: 16px;
   align-self: start;
+  width: 100%;
   min-width: 0;
   height: auto;
   padding: 18px;
@@ -176,6 +193,7 @@ onBeforeUnmount(() => stopThinking())
     var(--bg-elev-1);
   box-shadow: var(--inset);
   overflow: hidden;
+  isolation: isolate;
 }
 
 .ai-summary-card::before {
@@ -234,6 +252,11 @@ onBeforeUnmount(() => stopThinking())
   color: var(--accent);
 }
 
+.ready-pill.stale {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
 .ready-dot {
   width: 5px;
   height: 5px;
@@ -288,7 +311,7 @@ onBeforeUnmount(() => stopThinking())
 
 .loading-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 10px;
 }
 
@@ -299,6 +322,7 @@ onBeforeUnmount(() => stopThinking())
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   background: var(--bg-elev-2);
+  min-width: 0;
 }
 
 .loading-icon {
@@ -381,6 +405,48 @@ onBeforeUnmount(() => stopThinking())
   line-height: 1.6;
 }
 
+.stale-state {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 14px;
+  border: 1px solid rgba(251, 191, 36, 0.36);
+  border-radius: var(--radius-sm);
+  background: var(--warn-soft);
+  color: var(--warn);
+  min-width: 0;
+}
+
+.stale-icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(251, 191, 36, 0.42);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--warn) 10%, transparent);
+}
+
+.stale-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.stale-copy strong {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.stale-copy span {
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
 .dot-anim {
   width: 5px;
   height: 5px;
@@ -405,8 +471,8 @@ onBeforeUnmount(() => stopThinking())
 /* ========== Content (4 段 grid) ========== */
 .content {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
 }
 
 .block {
@@ -417,12 +483,13 @@ onBeforeUnmount(() => stopThinking())
   border-left: 2px solid;
   border-radius: var(--radius-sm);
   background: var(--bg-elev-1);
+  min-width: 0;
+  overflow: hidden;
   transition: all 0.15s ease;
 }
 
 .block:hover {
   border-color: var(--line-strong);
-  transform: translateY(-1px);
 }
 
 .block.what    { border-left-color: var(--accent); }
@@ -468,6 +535,8 @@ onBeforeUnmount(() => stopThinking())
   color: var(--text-primary);
   font-size: 13px;
   line-height: 1.7;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .block-text.muted { color: var(--text-muted); }
@@ -478,6 +547,8 @@ onBeforeUnmount(() => stopThinking())
   color: var(--text-primary);
   font-size: 13px;
   line-height: 1.7;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .block-list li + li { margin-top: 4px; }
@@ -493,8 +564,7 @@ onBeforeUnmount(() => stopThinking())
     justify-self: start;
   }
 
-  .content,
-  .loading-grid {
+  .stale-state {
     grid-template-columns: 1fr;
   }
 }
